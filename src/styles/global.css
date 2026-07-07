@@ -100,9 +100,14 @@ button {
 
 .record-card {
   border: 1px solid #dbe4ef;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 16px;
   background: #fbfcfe;
+}
+
+.record-card--selected {
+  border-color: #245d9d;
+  box-shadow: 0 0 0 3px rgb(36 93 157 / 12%);
 }
 
 .record-card__header {
@@ -125,6 +130,125 @@ button {
   gap: 4px;
   color: #5f6b7a;
   font-size: 0.9rem;
+}
+
+.record-card button,
+.workbench__queue button {
+  border: 1px solid #cfd8e3;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.record-card button {
+  margin-top: 14px;
+}
+
+.workbench {
+  display: grid;
+  gap: 20px;
+}
+
+.workbench__intro {
+  border: 1px solid #dbe4ef;
+  border-left: 4px solid #245d9d;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fbfcfe;
+}
+
+.workbench__intro h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+.workbench__intro p:last-child {
+  margin-bottom: 0;
+}
+
+.workbench__layout {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr) minmax(
+      220px,
+      260px
+    );
+  gap: 16px;
+}
+
+.workbench__queue,
+.workbench__checklist,
+.judgement-card {
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fbfcfe;
+}
+
+.workbench__queue {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.workbench__queue button {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.workbench__queue button.active {
+  border-color: #245d9d;
+  background: #eef6ff;
+}
+
+.workbench__main {
+  display: grid;
+  gap: 16px;
+}
+
+.judgement-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.judgement-card h3,
+.workbench__checklist h3 {
+  margin-top: 0;
+}
+
+.judgement-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.judgement-summary div {
+  border-radius: 8px;
+  padding: 10px;
+  background: #f4f7fb;
+}
+
+.judgement-summary dt {
+  color: #5f6b7a;
+  font-size: 0.85rem;
+}
+
+.judgement-summary dd {
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+.judgement-card h4 {
+  margin-bottom: 8px;
+}
+
+.judgement-card ul,
+.workbench__checklist ul {
+  padding-left: 20px;
+  line-height: 1.6;
 }
 
 .status-badge,
@@ -173,7 +297,7 @@ button {
 
 .empty-state,
 .error-state {
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 24px;
   text-align: center;
 }
@@ -186,4 +310,14 @@ button {
 .error-state {
   background: #fde2e1;
   color: #9f1f17;
+}
+
+@media (max-width: 860px) {
+  .workbench__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .judgement-summary {
+    grid-template-columns: 1fr;
+  }
 }

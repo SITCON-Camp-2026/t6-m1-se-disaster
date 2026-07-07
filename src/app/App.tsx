@@ -1,125 +1,69 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import messyReports from "../fixtures/phase-0/messy-reports.json";
-import reportsData from "../fixtures/shared/reports.json";
-import sitesData from "../fixtures/shared/sites.json";
-import tasksData from "../fixtures/shared/tasks.json";
-import assignmentsData from "../fixtures/shared/assignments.json";
-import { RecordCard } from "../components/RecordCard";
 import { EmptyState } from "../components/EmptyState";
-import { ErrorState } from "../components/ErrorState";
-import {
-  assignmentsSchema,
-  reportsSchema,
-  sitesSchema,
-  tasksSchema,
-} from "../contracts";
-import { safeParseFixture } from "../lib/load-fixture";
+import { Phase0RawInfoPanel } from "../features/phase-0/Phase0RawInfoPanel";
+import { Phase0Workbench } from "../features/phase-0/Phase0Workbench";
+import type { Phase0MessyRecord } from "../features/phase-0/phase0-types";
 
-type TabKey = "messy" | "reports" | "sites" | "tasks" | "assignments";
+type TabKey = "raw" | "workbench";
 
 const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: "messy", label: "第一階段原始資訊" },
-  { key: "reports", label: "通報" },
-  { key: "sites", label: "地點" },
-  { key: "tasks", label: "志工任務" },
-  { key: "assignments", label: "人員指派" },
+  { key: "raw", label: "原始資訊" },
+  { key: "workbench", label: "整理工作台" },
 ];
 
+const phase0Records = messyReports satisfies Phase0MessyRecord[];
+
 export function App() {
-  const [activeTab, setActiveTab] = useState<TabKey>("messy");
+  const [activeTab, setActiveTab] = useState<TabKey>("raw");
+  const [selectedRecordId, setSelectedRecordId] = useState(
+    phase0Records[0]?.id ?? "",
+  );
 
-  const parsed = useMemo(() => {
-    const reports = safeParseFixture(
-      reportsSchema,
-      reportsData,
-      "src/fixtures/shared/reports.json",
-    );
-    if (!reports.success) return reports;
-
-    const sites = safeParseFixture(
-      sitesSchema,
-      sitesData,
-      "src/fixtures/shared/sites.json",
-    );
-    if (!sites.success) return sites;
-
-    const tasks = safeParseFixture(
-      tasksSchema,
-      tasksData,
-      "src/fixtures/shared/tasks.json",
-    );
-    if (!tasks.success) return tasks;
-
-    const assignments = safeParseFixture(
-      assignmentsSchema,
-      assignmentsData,
-      "src/fixtures/shared/assignments.json",
-    );
-    if (!assignments.success) return assignments;
-
-    return {
-      success: true as const,
-      data: {
-        reports: reports.data,
-        sites: sites.data,
-        tasks: tasks.data,
-        assignments: assignments.data,
-      },
-    };
-  }, []);
-
-  const records = parsed.success
-    ? (() => {
-        if (activeTab === "messy") return messyReports;
-        if (activeTab === "reports") return parsed.data.reports;
-        if (activeTab === "sites") return parsed.data.sites;
-        if (activeTab === "tasks") return parsed.data.tasks;
-        return parsed.data.assignments;
-      })()
-    : [];
+  function selectForWorkbench(recordId: string) {
+    setSelectedRecordId(recordId);
+    setActiveTab("workbench");
+  }
 
   return (
     <main className="layout">
       <header className="hero">
         <p className="eyebrow">SITCON Camp 2026</p>
-        <h1>災害資訊積木起始專案</h1>
+        <h1>災害資訊整理工作台</h1>
         <p>
-          先面對混亂資料，再透過規格、資料格式、轉換器與測試，把前端原型做成可交接的資訊元件。
+          第一階段先用 coding agent
+          做出可展示的前端原型，再從成果中看見資料品質、角色、狀態與來源的限制。
         </p>
       </header>
 
-      {parsed.success ? (
-        <nav className="tabs" aria-label="資料分類">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              className={activeTab === tab.key ? "active" : ""}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      ) : null}
+      <nav className="tabs" aria-label="第一階段工作區">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            className={activeTab === tab.key ? "active" : ""}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
       <section className="panel">
-        {!parsed.success ? (
-          <ErrorState message={parsed.message} />
-        ) : records.length === 0 ? (
+        {phase0Records.length === 0 ? (
           <EmptyState message="目前沒有資料" />
+        ) : activeTab === "raw" ? (
+          <Phase0RawInfoPanel
+            records={phase0Records}
+            selectedRecordId={selectedRecordId}
+            onSelect={selectForWorkbench}
+          />
         ) : (
-          <>
-            <div className="panel__header">
-              <h2>{tabs.find((tab) => tab.key === activeTab)?.label}</h2>
-              <p>{records.length} 筆資料</p>
-            </div>
-            <div className="grid">
-              {records.map((record) => (
-                <RecordCard key={record.id} record={record} />
-              ))}
-            </div>
-          </>
+          <Phase0Workbench
+            records={phase0Records}
+            selectedRecordId={selectedRecordId}
+            onSelect={setSelectedRecordId}
+          />
         )}
       </section>
     </main>
