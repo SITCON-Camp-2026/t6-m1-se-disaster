@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type {
+  Phase0UploadCategoryTag,
   Phase0ReporterRole,
   Phase0UploadDraftInput,
 } from "./phase0-types";
@@ -11,13 +12,24 @@ const reporterRoles: Phase0ReporterRole[] = [
   "其他",
 ];
 
-const locationClueOptions = ["不確定"];
+const locationClueOptions = [
+  "不確定",
+  "活動中心",
+  "車站",
+  "學校",
+  "老街",
+  "路口",
+  "溪畔",
+  "大進",
+];
+const categoryTagOptions: Phase0UploadCategoryTag[] = ["地點", "需求", "招募"];
 
 const emptyDraft: Phase0UploadDraftInput = {
   role: "本人",
   needSummary: "",
   locationClue: "不確定",
   note: "",
+  categoryTags: [],
   demandTags: [],
 };
 
@@ -33,6 +45,7 @@ export function Phase0UploadPage({
   const canSubmit =
     draft.needSummary.trim().length > 0 ||
     draft.note.trim().length > 0 ||
+    draft.categoryTags.length > 0 ||
     draft.demandTags.length > 0;
 
   return (
@@ -139,6 +152,34 @@ export function Phase0UploadPage({
           </label>
 
           <fieldset className="location-choice-group">
+            <legend>分類</legend>
+            <div className="location-choice-buttons">
+              {categoryTagOptions.map((tag) => {
+                const isSelected = draft.categoryTags.includes(tag);
+
+                return (
+                  <button
+                    type="button"
+                    className={isSelected ? "active" : ""}
+                    aria-pressed={isSelected}
+                    key={tag}
+                    onClick={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        categoryTags: current.categoryTags.includes(tag)
+                          ? current.categoryTags.filter((item) => item !== tag)
+                          : [...current.categoryTags, tag],
+                      }))
+                    }
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <fieldset className="location-choice-group">
             <legend>上傳者標籤</legend>
             <div className="location-choice-buttons">
               {demandTagOptions.map((tag) => {
@@ -195,6 +236,14 @@ export function Phase0UploadPage({
             <div>
               <dt>備註</dt>
               <dd>{draft.note || "未填寫"}</dd>
+            </div>
+            <div>
+              <dt>分類</dt>
+              <dd>
+                {draft.categoryTags.length > 0
+                  ? draft.categoryTags.join("、")
+                  : "尚未標示"}
+              </dd>
             </div>
             <div>
               <dt>上傳者標籤</dt>

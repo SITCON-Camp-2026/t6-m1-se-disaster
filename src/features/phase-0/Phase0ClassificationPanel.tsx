@@ -9,8 +9,10 @@ import type {
   Phase0UploadReviewDraft,
 } from "./phase0-types";
 
-const categoryLabels = ["需求", "時間", "地點", "招募"] as const;
+const categoryLabels = ["需求", "地點", "招募"] as const;
 type CategoryKey = (typeof categoryLabels)[number];
+const inferableCategoryLabels = ["需求", "時間", "地點", "招募"] as const;
+type InferableCategoryKey = (typeof inferableCategoryLabels)[number];
 const timeOptions = ["早上", "中午", "晚上"] as const;
 const locationOptions = [
   "車站",
@@ -25,7 +27,7 @@ const locationOptions = [
 type TimeKey = (typeof timeOptions)[number];
 type LocationKey = (typeof locationOptions)[number];
 
-const categoryKeywords: Record<CategoryKey, string[]> = {
+const categoryKeywords: Record<InferableCategoryKey, string[]> = {
   需求: [
     "需要",
     "需求",
@@ -83,17 +85,17 @@ const categoryKeywords: Record<CategoryKey, string[]> = {
   ],
 };
 
-function inferCategoriesFromText(value: string): CategoryKey[] {
+function inferCategoriesFromText(value: string): InferableCategoryKey[] {
   const text = value.toLowerCase();
 
-  return categoryLabels.filter((category) =>
+  return inferableCategoryLabels.filter((category) =>
     categoryKeywords[category].some((keyword) =>
       text.includes(keyword.toLowerCase()),
     ),
   );
 }
 
-function inferCategories(record: Phase0MessyRecord): CategoryKey[] {
+function inferCategories(record: Phase0MessyRecord): InferableCategoryKey[] {
   return inferCategoriesFromText(record.rawText);
 }
 
@@ -118,7 +120,7 @@ type QueryItem =
       kind: "record";
       id: string;
       text: string;
-      categories: CategoryKey[];
+      categories: InferableCategoryKey[];
       timeSlots: TimeKey[];
       locations: LocationKey[];
       demandTags: string[];
@@ -130,7 +132,7 @@ type QueryItem =
       kind: "upload";
       id: string;
       text: string;
-      categories: CategoryKey[];
+      categories: InferableCategoryKey[];
       timeSlots: TimeKey[];
       locations: LocationKey[];
       demandTags: string[];
@@ -199,15 +201,20 @@ export function Phase0ClassificationPanel({
         draft.needSummary,
         draft.locationClue,
         draft.note,
+        ...(draft.categoryTags ?? []),
         ...(draft.demandTags ?? []),
         ...(draft.taskBlockerTags ?? []),
       ].join(" ");
+      const inferredCategories = inferCategoriesFromText(textForInference);
+      const categories: InferableCategoryKey[] = Array.from(
+        new Set([...inferredCategories, ...(draft.categoryTags ?? [])]),
+      );
 
       return {
         kind: "upload",
         id: draft.id,
         text: draft.needSummary,
-        categories: inferCategoriesFromText(textForInference),
+        categories,
         timeSlots: inferTimeSlotsFromText(textForInference),
         locations: inferLocationsFromText(textForInference),
         demandTags: draft.demandTags ?? [],
@@ -238,7 +245,12 @@ export function Phase0ClassificationPanel({
         reviewLabel,
         item.kind === "upload" ? "災民上傳 上傳草稿" : "原始資料",
         ...(item.kind === "upload"
-          ? [item.draft.role, item.draft.locationClue, item.draft.note]
+          ? [
+              item.draft.role,
+              item.draft.locationClue,
+              item.draft.note,
+              ...(item.draft.categoryTags ?? []),
+            ]
           : []),
         ...item.demandTags,
         ...item.taskBlockerTags,
@@ -250,8 +262,8 @@ export function Phase0ClassificationPanel({
         normalizedQuery.length === 0 || haystack.includes(normalizedQuery);
       const matchesCategory =
         selectedCategories.length === 0 ||
-        item.categories.some((category) =>
-          selectedCategories.includes(category),
+        selectedCategories.some((category) =>
+          item.categories.includes(category),
         );
       const matchesTime =
         selectedTimeSlots.length === 0 ||

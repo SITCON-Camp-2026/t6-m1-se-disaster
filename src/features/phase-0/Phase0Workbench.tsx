@@ -180,6 +180,14 @@ export function Phase0Workbench({
                   <dd>{selectedUploadDraft.note || "未填寫"}</dd>
                 </div>
                 <div>
+                  <dt>分類</dt>
+                  <dd>
+                    {selectedUploadDraft.categoryTags?.length
+                      ? selectedUploadDraft.categoryTags.join("、")
+                      : "尚未標示"}
+                  </dd>
+                </div>
+                <div>
                   <dt>上傳者標籤</dt>
                   <dd>
                     {selectedUploadReviewState?.demandTags.length

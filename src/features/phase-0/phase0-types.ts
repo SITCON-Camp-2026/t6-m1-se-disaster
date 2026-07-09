@@ -32,12 +32,14 @@ export type Phase0ReviewState = {
 };
 
 export type Phase0ReporterRole = "本人" | "家屬代填" | "現場志工協助" | "其他";
+export type Phase0UploadCategoryTag = "地點" | "需求" | "招募";
 
 export type Phase0UploadDraftInput = {
   role: Phase0ReporterRole;
   needSummary: string;
   locationClue: string;
   note: string;
+  categoryTags: Phase0UploadCategoryTag[];
   demandTags: string[];
 };
 

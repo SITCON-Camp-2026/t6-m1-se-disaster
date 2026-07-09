@@ -25,7 +25,9 @@ describe("App", () => {
     expect(screen.getByText("工作人員頁面")).toBeInTheDocument();
     expect(screen.getByText("災民上傳頁面")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "需求" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "時間" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "時間" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "地點" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "招募" })).toBeInTheDocument();
     expect(
@@ -59,7 +61,9 @@ describe("App", () => {
       screen.getByPlaceholderText("搜尋關鍵字、地點或需求"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "需求" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "時間" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "時間" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "地點" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "招募" })).toBeInTheDocument();
 
@@ -73,10 +77,10 @@ describe("App", () => {
   it("allows selecting multiple category buttons at once", () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "時間" }));
+    fireEvent.click(screen.getByRole("button", { name: "需求" }));
     fireEvent.click(screen.getByRole("button", { name: "地點" }));
 
-    expect(screen.getByRole("button", { name: "時間" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "需求" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -153,12 +157,19 @@ describe("App", () => {
       "aria-pressed",
       "true",
     );
+    fireEvent.click(screen.getByRole("button", { name: "活動中心" }));
+    expect(screen.getByRole("button", { name: "活動中心" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(
       screen.queryByRole("button", { name: "活動中心附近" }),
     ).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("備註"), {
       target: { value: "上傳者還不確定精確位置" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "地點" }));
+    fireEvent.click(screen.getByRole("button", { name: "招募" }));
     fireEvent.click(screen.getByRole("button", { name: "需要物資" }));
     fireEvent.click(screen.getByRole("button", { name: "送出上傳" }));
 
@@ -167,12 +178,17 @@ describe("App", () => {
     expect(
       screen.getAllByText("需要飲用水與協助搬動物品").length,
     ).toBeGreaterThan(0);
-    expect(screen.getAllByText("地點線索：不確定").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("地點線索：活動中心").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("備註：上傳者還不確定精確位置").length,
     ).toBeGreaterThan(0);
+    expect(screen.getAllByText("地點").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("招募").length).toBeGreaterThan(0);
     expect(screen.getAllByText("需要物資").length).toBeGreaterThan(0);
     expect(screen.getAllByText("尚未查核").length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole("button", { name: "時間" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
     expect(
@@ -229,6 +245,7 @@ describe("App", () => {
           needSummary: "需要協助確認狀況",
           locationClue: "不確定",
           note: "仍需要補充位置",
+          categoryTags: ["地點"],
           humanReviewed: false,
           demandTags: ["需要物資"],
           taskBlockerTags: ["地點不清楚"],
