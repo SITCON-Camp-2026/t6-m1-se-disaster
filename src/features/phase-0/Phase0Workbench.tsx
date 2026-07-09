@@ -20,8 +20,8 @@ export function Phase0Workbench({
   return (
     <div className="workbench">
       <div className="workbench__intro">
-        <p className="eyebrow">整理工作台</p>
-        <h2>第一階段的成功不是分類正確，而是把為什麼現在還不能判斷說清楚。</h2>
+        <p className="eyebrow">工作人員頁面</p>
+        <h2>這裡提供工作人員修改、整理與補充判斷的空間。</h2>
         <p>
           這裡先只標示安全邊界，真正的候選判斷要由小組和 coding agent
           補上；這不是 runtime LLM 分析，也不是正式資料模型。

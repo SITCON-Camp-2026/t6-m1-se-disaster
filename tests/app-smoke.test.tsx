@@ -3,20 +3,22 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/app/App";
 
 describe("App", () => {
-  it("renders starter title", () => {
+  it("renders the main processing entry title", () => {
     render(<App />);
-    expect(screen.getByText("災害資訊整理工作台")).toBeInTheDocument();
+    expect(screen.getByText("災害資訊處理入口")).toBeInTheDocument();
   });
 
-  it("keeps the home page focused on phase 0 tabs", () => {
+  it("keeps the home page focused on the staff workbench", () => {
     render(<App />);
 
     expect(
-      screen.getByRole("button", { name: "原始資訊" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "原始資訊" }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "整理工作台" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "整理工作台" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("查詢頁面")).toBeInTheDocument();
+    expect(screen.getByText("工作人員頁面")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "需求" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "時間" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "地點" })).toBeInTheDocument();
@@ -35,11 +37,11 @@ describe("App", () => {
   it("shows review states in the phase 0 workbench", () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "整理工作台" }));
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
 
     expect(
       screen.getByText(
-        "第一階段的成功不是分類正確，而是把為什麼現在還不能判斷說清楚。",
+        "這裡提供工作人員修改、整理與補充判斷的空間。",
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("待人工確認").length).toBeGreaterThan(0);
@@ -65,10 +67,42 @@ describe("App", () => {
     expect(screen.getAllByText(/雨鞋/i).length).toBeGreaterThan(0);
   });
 
+  it("allows selecting multiple category buttons at once", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "時間" }));
+    fireEvent.click(screen.getByRole("button", { name: "地點" }));
+
+    expect(screen.getByRole("button", { name: "時間" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "地點" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("supports multi-select time buttons for morning noon and evening", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "早上" }));
+    fireEvent.click(screen.getByRole("button", { name: "晚上" }));
+
+    expect(screen.getByRole("button", { name: "早上" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "晚上" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("keeps draft CRUD as learner work instead of starter output", () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "整理工作台" }));
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
 
     expect(screen.getByText("尚未建立整理草稿")).toBeInTheDocument();
     expect(

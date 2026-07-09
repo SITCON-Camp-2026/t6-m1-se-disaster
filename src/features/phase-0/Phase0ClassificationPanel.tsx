@@ -7,6 +7,11 @@ import type { Phase0MessyRecord } from "./phase0-types";
 
 const categoryLabels = ["需求", "時間", "地點", "招募"] as const;
 type CategoryKey = (typeof categoryLabels)[number];
+const timeOptions = ["早上", "中午", "晚上"] as const;
+const locationOptions = ["車站", "學校", "老街", "活動中心", "路口", "溪畔", "大進"] as const;
+
+type TimeKey = (typeof timeOptions)[number];
+type LocationKey = (typeof locationOptions)[number];
 
 const categoryKeywords: Record<CategoryKey, string[]> = {
   需求: [
@@ -53,16 +58,38 @@ function inferCategories(record: Phase0MessyRecord): CategoryKey[] {
   );
 }
 
+function inferTimeSlots(record: Phase0MessyRecord): TimeKey[] {
+  const text = record.rawText;
+
+  return timeOptions.filter((slot) => text.includes(slot));
+}
+
+function inferLocations(record: Phase0MessyRecord): LocationKey[] {
+  const text = record.rawText;
+
+  return locationOptions.filter((location) => text.includes(location));
+}
+
 export function Phase0ClassificationPanel({
   records,
 }: {
   records: Phase0MessyRecord[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState<"all" | CategoryKey>("all");
+  const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>([]);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<TimeKey[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<LocationKey[]>([]);
 
   const recordCategories = useMemo(
     () => new Map(records.map((record) => [record.id, inferCategories(record)])),
+    [records],
+  );
+  const recordTimeSlots = useMemo(
+    () => new Map(records.map((record) => [record.id, inferTimeSlots(record)])),
+    [records],
+  );
+  const recordLocations = useMemo(
+    () => new Map(records.map((record) => [record.id, inferLocations(record)])),
     [records],
   );
 
@@ -71,6 +98,8 @@ export function Phase0ClassificationPanel({
 
     return records.filter((record) => {
       const categories = recordCategories.get(record.id) ?? [];
+      const timeSlots = recordTimeSlots.get(record.id) ?? [];
+      const locations = recordLocations.get(record.id) ?? [];
       const haystack = [record.id, record.rawText]
         .join(" ")
         .toLowerCase();
@@ -78,11 +107,18 @@ export function Phase0ClassificationPanel({
       const matchesQuery =
         normalizedQuery.length === 0 || haystack.includes(normalizedQuery);
       const matchesCategory =
-        activeCategory === "all" || categories.includes(activeCategory);
+        selectedCategories.length === 0 ||
+        categories.some((category) => selectedCategories.includes(category));
+      const matchesTime =
+        selectedTimeSlots.length === 0 ||
+        timeSlots.some((slot) => selectedTimeSlots.includes(slot));
+      const matchesLocation =
+        selectedLocations.length === 0 ||
+        locations.some((location) => selectedLocations.includes(location));
 
-      return matchesQuery && matchesCategory;
+      return matchesQuery && matchesCategory && matchesTime && matchesLocation;
     });
-  }, [activeCategory, recordCategories, records, searchTerm]);
+  }, [recordCategories, recordLocations, recordTimeSlots, records, searchTerm, selectedCategories, selectedLocations, selectedTimeSlots]);
 
   return (
     <section className="classification-panel" aria-label="分類查詢">
@@ -108,24 +144,90 @@ export function Phase0ClassificationPanel({
         </label>
       </div>
 
-      <div className="category-pills" role="tablist" aria-label="分類欄位">
+      <div className="category-pills" role="group" aria-label="分類欄位">
         <button
           type="button"
-          className={activeCategory === "all" ? "active" : ""}
-          onClick={() => setActiveCategory("all")}
+          className={selectedCategories.length === 0 ? "active" : ""}
+          aria-pressed={selectedCategories.length === 0}
+          onClick={() => setSelectedCategories([])}
         >
           全部
         </button>
-        {categoryLabels.map((category) => (
-          <button
-            key={category}
-            type="button"
-            className={activeCategory === category ? "active" : ""}
-            onClick={() => setActiveCategory(category)}
-          >
-            {category}
-          </button>
-        ))}
+        {categoryLabels.map((category) => {
+          const isSelected = selectedCategories.includes(category);
+
+          return (
+            <button
+              key={category}
+              type="button"
+              className={isSelected ? "active" : ""}
+              aria-pressed={isSelected}
+              onClick={() =>
+                setSelectedCategories((current) =>
+                  current.includes(category)
+                    ? current.filter((item) => item !== category)
+                    : [...current, category],
+                )
+              }
+            >
+              {category}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="filter-group" aria-label="時間篩選">
+        <div className="filter-group__title">時間</div>
+        <div className="filter-pills">
+          {timeOptions.map((slot) => {
+            const isSelected = selectedTimeSlots.includes(slot);
+
+            return (
+              <button
+                key={slot}
+                type="button"
+                className={isSelected ? "active" : ""}
+                aria-pressed={isSelected}
+                onClick={() =>
+                  setSelectedTimeSlots((current) =>
+                    current.includes(slot)
+                      ? current.filter((item) => item !== slot)
+                      : [...current, slot],
+                  )
+                }
+              >
+                {slot}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="filter-group" aria-label="地點篩選">
+        <div className="filter-group__title">地點</div>
+        <div className="filter-pills">
+          {locationOptions.map((location) => {
+            const isSelected = selectedLocations.includes(location);
+
+            return (
+              <button
+                key={location}
+                type="button"
+                className={isSelected ? "active" : ""}
+                aria-pressed={isSelected}
+                onClick={() =>
+                  setSelectedLocations((current) =>
+                    current.includes(location)
+                      ? current.filter((item) => item !== location)
+                      : [...current, location],
+                  )
+                }
+              >
+                {location}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {filteredRecords.length === 0 ? (

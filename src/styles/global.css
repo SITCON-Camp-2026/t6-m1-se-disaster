@@ -139,10 +139,38 @@ button {
   cursor: pointer;
 }
 
-.category-pills button.active {
+.category-pills button.active,
+.category-pills button[aria-pressed="true"],
+.filter-pills button.active,
+.filter-pills button[aria-pressed="true"] {
   border-color: #245d9d;
   background: #245d9d;
   color: white;
+}
+
+.filter-group {
+  display: grid;
+  gap: 8px;
+}
+
+.filter-group__title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #5f6b7a;
+}
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-pills button {
+  border: 1px solid #cfd8e3;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #ffffff;
+  cursor: pointer;
 }
 
 .record-tags {
