@@ -46,8 +46,7 @@ function loadUploadReviewDrafts(): Phase0UploadReviewDraft[] {
         item !== null &&
         "id" in item &&
         "needSummary" in item &&
-        "locationClue" in item &&
-        "uploadedFileNames" in item,
+        "locationClue" in item,
     );
   } catch {
     return [];
@@ -97,11 +96,11 @@ export function App() {
         ...draft,
         id: `U-${String(current.length + 1).padStart(3, "0")}`,
         humanReviewed: false,
-        demandTags: [],
+        demandTags: draft.demandTags,
         taskBlockerTags: [],
       },
     ]);
-    setPage("staff");
+    setPage("query");
   }
 
   function updateUploadReviewDraft(
@@ -174,7 +173,10 @@ export function App() {
             uploadReviewDrafts={uploadReviewDrafts}
           />
         ) : page === "upload" ? (
-          <Phase0UploadPage onSendToReview={sendUploadDraftToReview} />
+          <Phase0UploadPage
+            demandTagOptions={demandTagOptions}
+            onSendToReview={sendUploadDraftToReview}
+          />
         ) : (
           <div className="panel__spacer">
             <Phase0Workbench

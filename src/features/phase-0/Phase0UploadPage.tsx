@@ -11,46 +11,41 @@ const reporterRoles: Phase0ReporterRole[] = [
   "其他",
 ];
 
-const locationClueOptions = [
-  "活動中心附近",
-  "車站附近",
-  "學校附近",
-  "老街附近",
-  "路口附近",
-  "位置仍不清楚",
-];
+const locationClueOptions = ["不確定"];
 
 const emptyDraft: Phase0UploadDraftInput = {
   role: "本人",
   needSummary: "",
-  locationClue: "位置仍不清楚",
-  uploadedFileNames: [],
+  locationClue: "不確定",
+  note: "",
+  demandTags: [],
 };
 
 export function Phase0UploadPage({
+  demandTagOptions,
   onSendToReview,
 }: {
+  demandTagOptions: string[];
   onSendToReview: (draft: Phase0UploadDraftInput) => void;
 }) {
   const [draft, setDraft] = useState<Phase0UploadDraftInput>(emptyDraft);
-  const [submittedDraft, setSubmittedDraft] =
-    useState<Phase0UploadDraftInput | null>(null);
-  const [sentToReview, setSentToReview] = useState(false);
 
   const canSubmit =
-    draft.needSummary.trim().length > 0 || draft.uploadedFileNames.length > 0;
+    draft.needSummary.trim().length > 0 ||
+    draft.note.trim().length > 0 ||
+    draft.demandTags.length > 0;
 
   return (
     <section className="upload-page" aria-label="災民上傳資料">
       <div className="upload-page__header">
         <div>
           <p className="eyebrow">災民上傳頁面</p>
-          <h2>建立待人工確認的原始資訊草稿</h2>
+          <h2>送出一筆待人工確認的原始資訊</h2>
           <p>
-            這個頁面只建立前端暫存草稿，不會真的上傳檔案，也不代表資料已被確認。
+            這個頁面只建立前端暫存資料，不會上傳檔案，也不代表資料已被確認。
           </p>
         </div>
-        <span className="review-tag review-tag--blocker">待人工確認</span>
+        <span className="review-tag review-tag--blocker">尚未查核</span>
       </div>
 
       <div className="upload-page__layout">
@@ -62,12 +57,12 @@ export function Phase0UploadPage({
               return;
             }
 
-            setSubmittedDraft({
+            onSendToReview({
               ...draft,
               needSummary: draft.needSummary.trim(),
-              locationClue: draft.locationClue.trim(),
+              note: draft.note.trim(),
             });
-            setSentToReview(false);
+            setDraft(emptyDraft);
           }}
         >
           <label className="control-field">
@@ -130,123 +125,92 @@ export function Phase0UploadPage({
           </fieldset>
 
           <label className="control-field">
-            <span>其他地點描述</span>
-            <input
-              type="text"
-              placeholder="若上方都不適合，可填模糊線索；請勿填真實完整地址"
-              value={
-                locationClueOptions.includes(draft.locationClue)
-                  ? ""
-                  : draft.locationClue
-              }
-              onChange={(event) => {
-                const nextLocation = event.target.value.trim();
-                setDraft((current) => ({
-                  ...current,
-                  locationClue: nextLocation || "位置仍不清楚",
-                }));
-              }}
-            />
-          </label>
-
-          <label className="control-field upload-dropzone">
-            <span>補充資料</span>
-            <input
-              type="file"
-              multiple
+            <span>備註</span>
+            <textarea
+              placeholder="可以寫下你不確定的地方；請勿填真實完整地址、電話或個資。"
+              value={draft.note}
               onChange={(event) =>
                 setDraft((current) => ({
                   ...current,
-                  uploadedFileNames: Array.from(
-                    event.target.files ?? [],
-                    (file) => file.name,
-                  ),
+                  note: event.target.value,
                 }))
               }
             />
-            <small>Phase 0 請勿放入真實照片、電話、完整地址或個資。</small>
-            {draft.uploadedFileNames.length > 0 ? (
-              <div className="selected-file-list" aria-live="polite">
-                <span>已選擇檔案</span>
-                <ul>
-                  {draft.uploadedFileNames.map((fileName) => (
-                    <li key={fileName}>{fileName}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </label>
+
+          <fieldset className="location-choice-group">
+            <legend>上傳者標籤</legend>
+            <div className="location-choice-buttons">
+              {demandTagOptions.map((tag) => {
+                const isSelected = draft.demandTags.includes(tag);
+
+                return (
+                  <button
+                    type="button"
+                    className={isSelected ? "active" : ""}
+                    aria-pressed={isSelected}
+                    key={tag}
+                    onClick={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        demandTags: current.demandTags.includes(tag)
+                          ? current.demandTags.filter((item) => item !== tag)
+                          : [...current.demandTags, tag],
+                      }))
+                    }
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           <div className="upload-form__actions">
             <button type="submit" disabled={!canSubmit}>
-              建立待審核草稿
+              送出上傳
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(emptyDraft);
-                setSubmittedDraft(null);
-                setSentToReview(false);
-              }}
-            >
+            <button type="button" onClick={() => setDraft(emptyDraft)}>
               清除草稿
             </button>
           </div>
         </form>
 
         <aside className="upload-preview" aria-live="polite">
-          <p className="eyebrow">草稿預覽</p>
-          {submittedDraft ? (
-            <>
-              <h3>已建立一筆待人工確認草稿</h3>
-              <dl>
-                <div>
-                  <dt>回報者身分</dt>
-                  <dd>{submittedDraft.role}</dd>
-                </div>
-                <div>
-                  <dt>協助內容</dt>
-                  <dd>{submittedDraft.needSummary || "未填寫"}</dd>
-                </div>
-                <div>
-                  <dt>地點線索</dt>
-                  <dd>{submittedDraft.locationClue || "未填寫"}</dd>
-                </div>
-                <div>
-                  <dt>補充資料</dt>
-                  <dd>
-                    {submittedDraft.uploadedFileNames.length > 0
-                      ? submittedDraft.uploadedFileNames.join("、")
-                      : "未選擇檔案"}
-                  </dd>
-                </div>
-              </dl>
-              <div className="review-tags">
-                <span className="review-tag review-tag--blocker">尚未查核</span>
-                <span className="review-tag review-tag--blocker">
-                  不能直接變成任務
-                </span>
-                {sentToReview ? (
-                  <span className="review-tag">已送交人工查核</span>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                className="upload-send-button"
-                disabled={sentToReview}
-                onClick={() => {
-                  onSendToReview(submittedDraft);
-                  setSentToReview(true);
-                }}
-              >
-                {sentToReview ? "已送交人工查核" : "送交人工查核"}
-              </button>
-            </>
-          ) : (
-            <div className="empty-state">
-              填寫內容後，這裡會出現待人工確認的草稿摘要。
+          <p className="eyebrow">送出前預覽</p>
+          <h3>{canSubmit ? "這筆資料送出後會出現在查詢頁" : "尚未填寫"}</h3>
+          <dl>
+            <div>
+              <dt>回報者身分</dt>
+              <dd>{draft.role}</dd>
             </div>
-          )}
+            <div>
+              <dt>協助內容</dt>
+              <dd>{draft.needSummary || "未填寫"}</dd>
+            </div>
+            <div>
+              <dt>地點線索</dt>
+              <dd>{draft.locationClue}</dd>
+            </div>
+            <div>
+              <dt>備註</dt>
+              <dd>{draft.note || "未填寫"}</dd>
+            </div>
+            <div>
+              <dt>上傳者標籤</dt>
+              <dd>
+                {draft.demandTags.length > 0
+                  ? draft.demandTags.join("、")
+                  : "尚未標示"}
+              </dd>
+            </div>
+          </dl>
+          <div className="review-tags">
+            <span className="review-tag review-tag--blocker">尚未查核</span>
+            <span className="review-tag review-tag--blocker">
+              不能直接變成任務
+            </span>
+          </div>
         </aside>
       </div>
     </section>

@@ -78,14 +78,14 @@ export function Phase0Workbench({
         </p>
       </div>
 
-      <section className="upload-review-inbox" aria-label="災民上傳待查核">
+      <section className="upload-review-inbox" aria-label="災民上傳資料">
         <div>
           <p className="eyebrow">人工查核收件匣</p>
-          <h3>災民上傳待查核</h3>
+          <h3>災民上傳資料</h3>
           <p>
             {uploadReviewDrafts.length > 0
-              ? `收到 ${uploadReviewDrafts.length} 筆待人工確認草稿。`
-              : "目前沒有送交人工查核的上傳草稿。"}
+              ? `收到 ${uploadReviewDrafts.length} 筆上傳資料，已可在查詢頁看到。`
+              : "目前沒有送出的上傳資料。"}
           </p>
         </div>
       </section>
@@ -173,14 +173,18 @@ export function Phase0Workbench({
                 </div>
                 <div>
                   <dt>地點線索</dt>
-                  <dd>{selectedUploadDraft.locationClue || "位置仍不清楚"}</dd>
+                  <dd>{selectedUploadDraft.locationClue || "不確定"}</dd>
                 </div>
                 <div>
-                  <dt>補充資料</dt>
+                  <dt>備註</dt>
+                  <dd>{selectedUploadDraft.note || "未填寫"}</dd>
+                </div>
+                <div>
+                  <dt>上傳者標籤</dt>
                   <dd>
-                    {selectedUploadDraft.uploadedFileNames.length > 0
-                      ? selectedUploadDraft.uploadedFileNames.join("、")
-                      : "未選擇檔案"}
+                    {selectedUploadReviewState?.demandTags.length
+                      ? selectedUploadReviewState.demandTags.join("、")
+                      : "尚未標示"}
                   </dd>
                 </div>
               </dl>

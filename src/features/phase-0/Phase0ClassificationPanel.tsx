@@ -194,29 +194,28 @@ export function Phase0ClassificationPanel({
         record,
       };
     });
-    const uploadItems: QueryItem[] = uploadReviewDrafts
-      .filter((draft) => draft.humanReviewed)
-      .map((draft) => {
-        const textForInference = [
-          draft.needSummary,
-          draft.locationClue,
-          ...(draft.demandTags ?? []),
-          ...(draft.taskBlockerTags ?? []),
-        ].join(" ");
+    const uploadItems: QueryItem[] = uploadReviewDrafts.map((draft) => {
+      const textForInference = [
+        draft.needSummary,
+        draft.locationClue,
+        draft.note,
+        ...(draft.demandTags ?? []),
+        ...(draft.taskBlockerTags ?? []),
+      ].join(" ");
 
-        return {
-          kind: "upload",
-          id: draft.id,
-          text: draft.needSummary,
-          categories: inferCategoriesFromText(textForInference),
-          timeSlots: inferTimeSlotsFromText(textForInference),
-          locations: inferLocationsFromText(textForInference),
-          demandTags: draft.demandTags ?? [],
-          taskBlockerTags: draft.taskBlockerTags ?? [],
-          humanReviewed: Boolean(draft.humanReviewed),
-          draft,
-        };
-      });
+      return {
+        kind: "upload",
+        id: draft.id,
+        text: draft.needSummary,
+        categories: inferCategoriesFromText(textForInference),
+        timeSlots: inferTimeSlotsFromText(textForInference),
+        locations: inferLocationsFromText(textForInference),
+        demandTags: draft.demandTags ?? [],
+        taskBlockerTags: draft.taskBlockerTags ?? [],
+        humanReviewed: Boolean(draft.humanReviewed),
+        draft,
+      };
+    });
 
     return [...recordItems, ...uploadItems];
   }, [
@@ -239,11 +238,7 @@ export function Phase0ClassificationPanel({
         reviewLabel,
         item.kind === "upload" ? "災民上傳 上傳草稿" : "原始資料",
         ...(item.kind === "upload"
-          ? [
-              item.draft.role,
-              item.draft.locationClue,
-              ...item.draft.uploadedFileNames,
-            ]
+          ? [item.draft.role, item.draft.locationClue, item.draft.note]
           : []),
         ...item.demandTags,
         ...item.taskBlockerTags,
@@ -475,7 +470,15 @@ export function Phase0ClassificationPanel({
                   {item.kind === "record" ? (
                     <StatusBadge status={item.record.verificationStatus} />
                   ) : (
-                    <span className="review-tag">已人工審核</span>
+                    <span
+                      className={
+                        item.humanReviewed
+                          ? "review-tag"
+                          : "review-tag review-tag--blocker"
+                      }
+                    >
+                      {item.humanReviewed ? "已人工審核" : "尚未查核"}
+                    </span>
                   )}
                 </div>
                 <p>{item.text || "未填寫協助內容"}</p>
@@ -489,6 +492,9 @@ export function Phase0ClassificationPanel({
                     <>
                       <span className="source-label">災民上傳</span>
                       <span>地點線索：{item.draft.locationClue}</span>
+                      {item.draft.note ? (
+                        <span>備註：{item.draft.note}</span>
+                      ) : null}
                     </>
                   )}
                 </div>
@@ -499,7 +505,7 @@ export function Phase0ClassificationPanel({
                     className="review-tags"
                     aria-label={`${item.id} 人工標示`}
                   >
-                    {item.kind === "record" && item.humanReviewed ? (
+                    {item.humanReviewed ? (
                       <span className="review-tag">已人工審核</span>
                     ) : null}
                     {item.demandTags.map((tag) => (

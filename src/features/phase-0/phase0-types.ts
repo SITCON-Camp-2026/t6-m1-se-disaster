@@ -37,7 +37,8 @@ export type Phase0UploadDraftInput = {
   role: Phase0ReporterRole;
   needSummary: string;
   locationClue: string;
-  uploadedFileNames: string[];
+  note: string;
+  demandTags: string[];
 };
 
 export type Phase0UploadReviewDraft = Phase0UploadDraftInput & {
