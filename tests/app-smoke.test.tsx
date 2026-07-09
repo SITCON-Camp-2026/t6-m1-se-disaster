@@ -17,11 +17,12 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "整理工作台" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "需求" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "時間" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "地點" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "招募" })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "通報" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "地點" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "志工任務" }),
@@ -43,6 +44,25 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("待人工確認").length).toBeGreaterThan(0);
     expect(screen.getAllByText("未查核").length).toBeGreaterThan(0);
+  });
+
+  it("adds a classification search panel for phase 0 records", () => {
+    render(<App />);
+
+    expect(screen.getByText("分類查詢")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("搜尋關鍵字、地點或需求"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "需求" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "時間" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "地點" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "招募" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("搜尋關鍵字、地點或需求"), {
+      target: { value: "雨鞋" },
+    });
+
+    expect(screen.getAllByText(/雨鞋/i).length).toBeGreaterThan(0);
   });
 
   it("keeps draft CRUD as learner work instead of starter output", () => {

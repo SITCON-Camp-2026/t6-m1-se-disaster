@@ -1,6 +1,7 @@
 import { useState } from "react";
 import messyReports from "../fixtures/phase-0/messy-reports.json";
 import { EmptyState } from "../components/EmptyState";
+import { Phase0ClassificationPanel } from "../features/phase-0/Phase0ClassificationPanel";
 import { Phase0RawInfoPanel } from "../features/phase-0/Phase0RawInfoPanel";
 import { Phase0Workbench } from "../features/phase-0/Phase0Workbench";
 import type { Phase0MessyRecord } from "../features/phase-0/phase0-types";
@@ -52,18 +53,27 @@ export function App() {
       <section className="panel">
         {phase0Records.length === 0 ? (
           <EmptyState message="目前沒有資料" />
-        ) : activeTab === "raw" ? (
-          <Phase0RawInfoPanel
-            records={phase0Records}
-            selectedRecordId={selectedRecordId}
-            onSelect={selectForWorkbench}
-          />
         ) : (
-          <Phase0Workbench
-            records={phase0Records}
-            selectedRecordId={selectedRecordId}
-            onSelect={setSelectedRecordId}
-          />
+          <>
+            <Phase0ClassificationPanel records={phase0Records} />
+            {activeTab === "raw" ? (
+              <div className="panel__spacer">
+                <Phase0RawInfoPanel
+                  records={phase0Records}
+                  selectedRecordId={selectedRecordId}
+                  onSelect={selectForWorkbench}
+                />
+              </div>
+            ) : (
+              <div className="panel__spacer">
+                <Phase0Workbench
+                  records={phase0Records}
+                  selectedRecordId={selectedRecordId}
+                  onSelect={setSelectedRecordId}
+                />
+              </div>
+            )}
+          </>
         )}
       </section>
     </main>
