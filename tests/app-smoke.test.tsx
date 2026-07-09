@@ -74,6 +74,33 @@ describe("App", () => {
     expect(screen.getByText("目前使用者：existing-user")).toBeInTheDocument();
   });
 
+  it("keeps registered usernames after the login session ends", () => {
+    const { unmount } = renderSignedInApp("saved-user");
+
+    unmount();
+    window.sessionStorage.clear();
+
+    render(<App />);
+
+    expect(screen.getByText("登入帳號")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "註冊" }));
+    fireEvent.change(screen.getByLabelText("使用者名稱"), {
+      target: { value: "saved-user" },
+    });
+    fireEvent.change(screen.getByLabelText("密碼"), {
+      target: { value: "demo-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "建立帳號並登入" }));
+
+    expect(screen.getByText("這個使用者名稱已註冊")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "登入" }));
+    fireEvent.click(screen.getByRole("button", { name: "登入工作台" }));
+
+    expect(screen.getByText("目前使用者：saved-user")).toBeInTheDocument();
+  });
+
   it("keeps the home page focused on the staff workbench", () => {
     renderSignedInApp();
 
@@ -217,6 +244,7 @@ describe("App", () => {
     window.sessionStorage.clear();
 
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "註冊" }));
     fireEvent.change(screen.getByLabelText("使用者名稱"), {
       target: { value: "other-user" },
     });
@@ -384,6 +412,7 @@ describe("App", () => {
     window.sessionStorage.clear();
 
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "註冊" }));
     fireEvent.change(screen.getByLabelText("使用者名稱"), {
       target: { value: "other-user" },
     });

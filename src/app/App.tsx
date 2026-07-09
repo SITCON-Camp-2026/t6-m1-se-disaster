@@ -59,9 +59,9 @@ const taskAcceptancesStorageKey = "phase0-task-acceptances";
 
 function loadRegisteredUsers(): string[] {
   try {
-    const storedValue = window.sessionStorage.getItem(
-      registeredUsersStorageKey,
-    );
+    const storedValue =
+      window.localStorage.getItem(registeredUsersStorageKey) ??
+      window.sessionStorage.getItem(registeredUsersStorageKey);
 
     if (!storedValue) {
       return [];
@@ -818,11 +818,25 @@ export function App() {
     useState<TaskAcceptances>(loadTaskAcceptances);
 
   useEffect(() => {
-    window.sessionStorage.setItem(
+    window.localStorage.setItem(
       registeredUsersStorageKey,
       JSON.stringify(registeredUsers),
     );
   }, [registeredUsers]);
+
+  useEffect(() => {
+    function syncRegisteredUsers(event: StorageEvent) {
+      if (event.key !== registeredUsersStorageKey) {
+        return;
+      }
+
+      setRegisteredUsers(loadRegisteredUsers());
+    }
+
+    window.addEventListener("storage", syncRegisteredUsers);
+
+    return () => window.removeEventListener("storage", syncRegisteredUsers);
+  }, []);
 
   useEffect(() => {
     if (loginSession) {
