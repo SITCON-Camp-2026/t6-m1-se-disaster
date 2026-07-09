@@ -297,7 +297,7 @@ describe("App", () => {
   });
 
   it("lets a reporter create a front-end only upload draft", () => {
-    renderSignedInApp();
+    const { unmount } = renderSignedInApp();
 
     fireEvent.click(screen.getByRole("button", { name: "災民上傳頁面" }));
 
@@ -379,6 +379,24 @@ describe("App", () => {
     });
 
     expect(screen.getAllByText("U-001").length).toBeGreaterThan(0);
+
+    unmount();
+    window.sessionStorage.clear();
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("使用者名稱"), {
+      target: { value: "other-user" },
+    });
+    fireEvent.change(screen.getByLabelText("密碼"), {
+      target: { value: "demo-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "建立帳號並登入" }));
+
+    expect(screen.getAllByText("U-001").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("回報者：camp-user").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("需要飲用水與協助搬動物品").length,
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
     fireEvent.click(screen.getByRole("button", { name: "刪除這筆上傳草稿" }));

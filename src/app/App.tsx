@@ -110,9 +110,9 @@ function loadLoginSession(): LoginSession | null {
 
 function loadUploadReviewDrafts(): Phase0UploadReviewDraft[] {
   try {
-    const storedValue = window.sessionStorage.getItem(
-      uploadReviewDraftStorageKey,
-    );
+    const storedValue =
+      window.localStorage.getItem(uploadReviewDraftStorageKey) ??
+      window.sessionStorage.getItem(uploadReviewDraftStorageKey);
 
     if (!storedValue) {
       return [];
@@ -837,11 +837,25 @@ export function App() {
   }, [loginSession]);
 
   useEffect(() => {
-    window.sessionStorage.setItem(
+    window.localStorage.setItem(
       uploadReviewDraftStorageKey,
       JSON.stringify(uploadReviewDrafts),
     );
   }, [uploadReviewDrafts]);
+
+  useEffect(() => {
+    function syncUploadReviewDrafts(event: StorageEvent) {
+      if (event.key !== uploadReviewDraftStorageKey) {
+        return;
+      }
+
+      setUploadReviewDrafts(loadUploadReviewDrafts());
+    }
+
+    window.addEventListener("storage", syncUploadReviewDrafts);
+
+    return () => window.removeEventListener("storage", syncUploadReviewDrafts);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(
