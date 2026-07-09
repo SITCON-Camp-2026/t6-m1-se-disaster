@@ -19,6 +19,7 @@ describe("App", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("查詢頁面")).toBeInTheDocument();
     expect(screen.getByText("工作人員頁面")).toBeInTheDocument();
+    expect(screen.getByText("災民上傳頁面")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "需求" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "時間" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "地點" })).toBeInTheDocument();
@@ -40,9 +41,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
 
     expect(
-      screen.getByText(
-        "這裡提供工作人員修改、整理與補充判斷的空間。",
-      ),
+      screen.getByText("這裡提供工作人員修改、整理與補充判斷的空間。"),
     ).toBeInTheDocument();
     expect(screen.getAllByText("待人工確認").length).toBeGreaterThan(0);
     expect(screen.getAllByText("未查核").length).toBeGreaterThan(0);
@@ -97,6 +96,84 @@ describe("App", () => {
       "aria-pressed",
       "true",
     );
+  });
+
+  it("shows staff review demand tags on the query page", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
+    fireEvent.click(screen.getByRole("button", { name: "標為已人工審核" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "需求分類：須自備工具" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "需求分類：不須自備工具" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "需求分類：需要物資" }));
+    fireEvent.click(screen.getByRole("button", { name: "地點不清楚" }));
+    fireEvent.click(screen.getByRole("button", { name: "來源未確認" }));
+    fireEvent.click(screen.getByRole("button", { name: "查詢頁面" }));
+
+    expect(screen.getByText("已人工審核")).toBeInTheDocument();
+    expect(screen.getAllByText("須自備工具").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("不須自備工具").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("需要物資").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("地點不清楚").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("來源未確認").length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByPlaceholderText("搜尋關鍵字、地點或需求"), {
+      target: { value: "來源未確認" },
+    });
+
+    expect(screen.getByText("M-001")).toBeInTheDocument();
+    expect(screen.getAllByText("來源未確認").length).toBeGreaterThan(0);
+  });
+
+  it("lets a reporter create a front-end only upload draft", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "災民上傳頁面" }));
+
+    expect(
+      screen.getByText("建立待人工確認的原始資訊草稿"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("待人工確認").length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText("回報者身分"), {
+      target: { value: "家屬代填" },
+    });
+    fireEvent.change(screen.getByLabelText("需要協助內容"), {
+      target: { value: "需要飲用水與協助搬動物品" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "活動中心附近" }));
+    fireEvent.change(screen.getByLabelText(/補充資料/), {
+      target: {
+        files: [new File(["mock"], "mock-note.txt", { type: "text/plain" })],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "建立待審核草稿" }));
+
+    expect(screen.getByText("已建立一筆待人工確認草稿")).toBeInTheDocument();
+    expect(screen.getAllByText("家屬代填").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("需要飲用水與協助搬動物品").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("活動中心附近").length).toBeGreaterThan(0);
+    expect(screen.getByText("mock-note.txt")).toBeInTheDocument();
+    expect(screen.getByText("不能直接變成任務")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "送交人工查核" }));
+    expect(
+      screen.getByRole("button", { name: "已送交人工查核" }),
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
+
+    expect(screen.getByText("災民上傳待查核")).toBeInTheDocument();
+    expect(screen.getByText("U-001")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("需要飲用水與協助搬動物品").length,
+    ).toBeGreaterThan(0);
   });
 
   it("keeps draft CRUD as learner work instead of starter output", () => {

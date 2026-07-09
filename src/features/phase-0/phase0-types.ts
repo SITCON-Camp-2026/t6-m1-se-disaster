@@ -25,6 +25,25 @@ export type Phase0MessyRecord = {
   updatedAt: string;
 };
 
+export type Phase0ReviewState = {
+  humanReviewed: boolean;
+  demandTags: string[];
+  taskBlockerTags: string[];
+};
+
+export type Phase0ReporterRole = "本人" | "家屬代填" | "現場志工協助" | "其他";
+
+export type Phase0UploadDraftInput = {
+  role: Phase0ReporterRole;
+  needSummary: string;
+  locationClue: string;
+  uploadedFileNames: string[];
+};
+
+export type Phase0UploadReviewDraft = Phase0UploadDraftInput & {
+  id: string;
+};
+
 export type Phase0JudgementDraft = {
   messyRecordId: string;
   possibleKind: Phase0PossibleKind;

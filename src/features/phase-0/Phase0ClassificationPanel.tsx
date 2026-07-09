@@ -3,12 +3,20 @@ import { EmptyState } from "../../components/EmptyState";
 import { SourceLabel } from "../../components/SourceLabel";
 import { StatusBadge } from "../../components/StatusBadge";
 import { formatDateTime } from "../../lib/date";
-import type { Phase0MessyRecord } from "./phase0-types";
+import type { Phase0MessyRecord, Phase0ReviewState } from "./phase0-types";
 
 const categoryLabels = ["需求", "時間", "地點", "招募"] as const;
 type CategoryKey = (typeof categoryLabels)[number];
 const timeOptions = ["早上", "中午", "晚上"] as const;
-const locationOptions = ["車站", "學校", "老街", "活動中心", "路口", "溪畔", "大進"] as const;
+const locationOptions = [
+  "車站",
+  "學校",
+  "老街",
+  "活動中心",
+  "路口",
+  "溪畔",
+  "大進",
+] as const;
 
 type TimeKey = (typeof timeOptions)[number];
 type LocationKey = (typeof locationOptions)[number];
@@ -30,7 +38,18 @@ const categoryKeywords: Record<CategoryKey, string[]> = {
     "清泥",
     "檢修",
   ],
-  時間: ["早上", "下午", "中午", "晚上", "14:20", "14:35", "16:30", "今天", "昨天", "明天"],
+  時間: [
+    "早上",
+    "下午",
+    "中午",
+    "晚上",
+    "14:20",
+    "14:35",
+    "16:30",
+    "今天",
+    "昨天",
+    "明天",
+  ],
   地點: [
     "地址",
     "位置",
@@ -47,14 +66,26 @@ const categoryKeywords: Record<CategoryKey, string[]> = {
     "溪畔",
     "大進",
   ],
-  招募: ["招募", "志工", "集合", "派人", "過去拿", "報到", "登記", "人員", "名單"],
+  招募: [
+    "招募",
+    "志工",
+    "集合",
+    "派人",
+    "過去拿",
+    "報到",
+    "登記",
+    "人員",
+    "名單",
+  ],
 };
 
 function inferCategories(record: Phase0MessyRecord): CategoryKey[] {
   const text = record.rawText.toLowerCase();
 
   return categoryLabels.filter((category) =>
-    categoryKeywords[category].some((keyword) => text.includes(keyword.toLowerCase())),
+    categoryKeywords[category].some((keyword) =>
+      text.includes(keyword.toLowerCase()),
+    ),
   );
 }
 
@@ -71,17 +102,30 @@ function inferLocations(record: Phase0MessyRecord): LocationKey[] {
 }
 
 export function Phase0ClassificationPanel({
+  demandTagOptions,
   records,
+  reviewStates,
+  taskBlockerTagOptions,
 }: {
+  demandTagOptions: string[];
   records: Phase0MessyRecord[];
+  reviewStates: Record<string, Phase0ReviewState>;
+  taskBlockerTagOptions: string[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>(
+    [],
+  );
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<TimeKey[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<LocationKey[]>([]);
+  const [selectedDemandTags, setSelectedDemandTags] = useState<string[]>([]);
+  const [selectedTaskBlockerTags, setSelectedTaskBlockerTags] = useState<
+    string[]
+  >([]);
 
   const recordCategories = useMemo(
-    () => new Map(records.map((record) => [record.id, inferCategories(record)])),
+    () =>
+      new Map(records.map((record) => [record.id, inferCategories(record)])),
     [records],
   );
   const recordTimeSlots = useMemo(
@@ -100,7 +144,19 @@ export function Phase0ClassificationPanel({
       const categories = recordCategories.get(record.id) ?? [];
       const timeSlots = recordTimeSlots.get(record.id) ?? [];
       const locations = recordLocations.get(record.id) ?? [];
-      const haystack = [record.id, record.rawText]
+      const reviewState = reviewStates[record.id];
+      const demandTags = reviewState?.demandTags ?? [];
+      const taskBlockerTags = reviewState?.taskBlockerTags ?? [];
+      const reviewLabel = reviewState?.humanReviewed
+        ? "已人工審核 人工看過"
+        : "";
+      const haystack = [
+        record.id,
+        record.rawText,
+        reviewLabel,
+        ...demandTags,
+        ...taskBlockerTags,
+      ]
         .join(" ")
         .toLowerCase();
 
@@ -115,10 +171,35 @@ export function Phase0ClassificationPanel({
       const matchesLocation =
         selectedLocations.length === 0 ||
         locations.some((location) => selectedLocations.includes(location));
+      const matchesDemandTags =
+        selectedDemandTags.length === 0 ||
+        demandTags.some((tag) => selectedDemandTags.includes(tag));
+      const matchesTaskBlockerTags =
+        selectedTaskBlockerTags.length === 0 ||
+        taskBlockerTags.some((tag) => selectedTaskBlockerTags.includes(tag));
 
-      return matchesQuery && matchesCategory && matchesTime && matchesLocation;
+      return (
+        matchesQuery &&
+        matchesCategory &&
+        matchesTime &&
+        matchesLocation &&
+        matchesDemandTags &&
+        matchesTaskBlockerTags
+      );
     });
-  }, [recordCategories, recordLocations, recordTimeSlots, records, searchTerm, selectedCategories, selectedLocations, selectedTimeSlots]);
+  }, [
+    recordCategories,
+    recordLocations,
+    recordTimeSlots,
+    records,
+    reviewStates,
+    searchTerm,
+    selectedCategories,
+    selectedDemandTags,
+    selectedLocations,
+    selectedTaskBlockerTags,
+    selectedTimeSlots,
+  ]);
 
   return (
     <section className="classification-panel" aria-label="分類查詢">
@@ -230,12 +311,70 @@ export function Phase0ClassificationPanel({
         </div>
       </div>
 
+      <div className="filter-group" aria-label="需求分類篩選">
+        <div className="filter-group__title">需求分類</div>
+        <div className="filter-pills">
+          {demandTagOptions.map((tag) => {
+            const isSelected = selectedDemandTags.includes(tag);
+
+            return (
+              <button
+                key={tag}
+                type="button"
+                className={isSelected ? "active" : ""}
+                aria-pressed={isSelected}
+                onClick={() =>
+                  setSelectedDemandTags((current) =>
+                    current.includes(tag)
+                      ? current.filter((item) => item !== tag)
+                      : [...current, tag],
+                  )
+                }
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="filter-group" aria-label="不能直接變成任務原因篩選">
+        <div className="filter-group__title">不能直接變成任務</div>
+        <div className="filter-pills">
+          {taskBlockerTagOptions.map((tag) => {
+            const isSelected = selectedTaskBlockerTags.includes(tag);
+
+            return (
+              <button
+                key={tag}
+                type="button"
+                className={isSelected ? "active" : ""}
+                aria-pressed={isSelected}
+                onClick={() =>
+                  setSelectedTaskBlockerTags((current) =>
+                    current.includes(tag)
+                      ? current.filter((item) => item !== tag)
+                      : [...current, tag],
+                  )
+                }
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {filteredRecords.length === 0 ? (
         <EmptyState message="沒有符合條件的資料" />
       ) : (
         <div className="grid">
           {filteredRecords.map((record) => {
             const categories = recordCategories.get(record.id) ?? [];
+            const reviewState = reviewStates[record.id];
+            const demandTags = reviewState?.demandTags ?? [];
+            const taskBlockerTags = reviewState?.taskBlockerTags ?? [];
+
             return (
               <article className="record-card" key={record.id}>
                 <div className="record-card__header">
@@ -247,6 +386,31 @@ export function Phase0ClassificationPanel({
                   <SourceLabel sourceType={record.sourceType} />
                   <span>更新：{formatDateTime(record.updatedAt)}</span>
                 </div>
+                {reviewState?.humanReviewed ||
+                demandTags.length > 0 ||
+                taskBlockerTags.length > 0 ? (
+                  <div
+                    className="review-tags"
+                    aria-label={`${record.id} 人工標示`}
+                  >
+                    {reviewState?.humanReviewed ? (
+                      <span className="review-tag">已人工審核</span>
+                    ) : null}
+                    {demandTags.map((tag) => (
+                      <span className="review-tag review-tag--demand" key={tag}>
+                        {tag}
+                      </span>
+                    ))}
+                    {taskBlockerTags.map((tag) => (
+                      <span
+                        className="review-tag review-tag--blocker"
+                        key={tag}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="record-tags">
                   {categories.map((category) => (
                     <span className="category-chip" key={category}>
