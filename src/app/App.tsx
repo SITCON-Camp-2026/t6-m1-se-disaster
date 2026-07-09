@@ -934,14 +934,27 @@ export function App() {
     updater: (current: Phase0UploadReviewDraft) => Phase0UploadReviewDraft,
   ) {
     setUploadReviewDrafts((current) =>
-      current.map((draft) => (draft.id === draftId ? updater(draft) : draft)),
+      current.map((draft) =>
+        draft.id === draftId && draft.reporterName !== loginSession?.username
+          ? updater(draft)
+          : draft,
+      ),
     );
   }
 
   function approveUploadReviewDraft(draftId: string) {
+    if (
+      uploadReviewDrafts.some(
+        (draft) =>
+          draft.id === draftId && draft.reporterName === loginSession?.username,
+      )
+    ) {
+      return;
+    }
+
     setUploadReviewDrafts((current) =>
       current.map((draft) =>
-        draft.id === draftId
+        draft.id === draftId && draft.reporterName !== loginSession?.username
           ? { ...draft, humanReviewed: true, reviewDecision: "approved" }
           : draft,
       ),
@@ -949,9 +962,18 @@ export function App() {
   }
 
   function rejectUploadReviewDraft(draftId: string) {
+    if (
+      uploadReviewDrafts.some(
+        (draft) =>
+          draft.id === draftId && draft.reporterName === loginSession?.username,
+      )
+    ) {
+      return;
+    }
+
     setUploadReviewDrafts((current) =>
       current.map((draft) =>
-        draft.id === draftId
+        draft.id === draftId && draft.reporterName !== loginSession?.username
           ? { ...draft, humanReviewed: true, reviewDecision: "rejected" }
           : draft,
       ),
@@ -1174,6 +1196,7 @@ export function App() {
         ) : (
           <div className="panel__spacer">
             <Phase0Workbench
+              currentUsername={loginSession.username}
               demandTagOptions={demandTagOptions}
               records={phase0Records}
               reviewStates={reviewStates}

@@ -47,6 +47,7 @@ function getUploadReviewLabel(draft: Phase0UploadReviewDraft) {
 }
 
 export function Phase0Workbench({
+  currentUsername,
   demandTagOptions,
   records,
   reviewStates,
@@ -60,6 +61,7 @@ export function Phase0Workbench({
   onUpdateReviewState,
   onUpdateUploadReviewDraft,
 }: {
+  currentUsername: string;
   demandTagOptions: string[];
   records: Phase0MessyRecord[];
   reviewStates: Record<string, Phase0ReviewState>;
@@ -109,6 +111,8 @@ export function Phase0Workbench({
         taskBlockerTags: selectedUploadDraft.taskBlockerTags ?? [],
       }
     : null;
+  const isSelectedUploadOwnedByCurrentUser =
+    selectedUploadDraft?.reporterName === currentUsername;
   const normalizedStaffQueueSearch = staffQueueSearchTerm.trim().toLowerCase();
   const filteredUploadReviewDrafts = useMemo(
     () =>
@@ -362,6 +366,11 @@ export function Phase0Workbench({
                     <p>
                       這些標示只代表工作人員看過與整理過，不代表上傳內容已被確認為事實。
                     </p>
+                    {isSelectedUploadOwnedByCurrentUser ? (
+                      <p className="query-safety-note">
+                        你不能審核自己上傳的資料，請由其他工作人員處理。
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="staff-review-actions">
@@ -378,6 +387,7 @@ export function Phase0Workbench({
                               : "staff-review-button"
                           }
                           aria-pressed={isSelected}
+                          disabled={isSelectedUploadOwnedByCurrentUser}
                           key={tag}
                           onClick={() =>
                             onUpdateUploadReviewDraft(
@@ -419,6 +429,7 @@ export function Phase0Workbench({
                                 : "staff-review-button staff-review-button--warning"
                             }
                             aria-pressed={isSelected}
+                            disabled={isSelectedUploadOwnedByCurrentUser}
                             key={tag}
                             onClick={() =>
                               onUpdateUploadReviewDraft(
@@ -478,6 +489,7 @@ export function Phase0Workbench({
                   type="button"
                   className="upload-review-detail__review"
                   disabled={
+                    isSelectedUploadOwnedByCurrentUser ||
                     getUploadReviewDecision(selectedUploadDraft) === "approved"
                   }
                   onClick={() =>
@@ -492,6 +504,7 @@ export function Phase0Workbench({
                   type="button"
                   className="upload-review-detail__reject"
                   disabled={
+                    isSelectedUploadOwnedByCurrentUser ||
                     getUploadReviewDecision(selectedUploadDraft) === "rejected"
                   }
                   onClick={() =>

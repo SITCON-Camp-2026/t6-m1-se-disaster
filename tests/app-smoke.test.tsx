@@ -383,6 +383,30 @@ describe("App", () => {
     expect(screen.queryByText("U-001")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
+    expect(
+      screen.getByText("你不能審核自己上傳的資料，請由其他工作人員處理。"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "標為審核通過" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "查詢頁面" }));
+    expect(screen.queryByText("U-001")).not.toBeInTheDocument();
+
+    unmount();
+    window.sessionStorage.clear();
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "註冊" }));
+    fireEvent.change(screen.getByLabelText("使用者名稱"), {
+      target: { value: "other-user" },
+    });
+    fireEvent.change(screen.getByLabelText("密碼"), {
+      target: { value: "demo-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "建立帳號並登入" }));
+
+    expect(screen.queryByText("U-001")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
     fireEvent.click(screen.getByRole("button", { name: "標為審核通過" }));
 
     expect(screen.getAllByText("審核通過").length).toBeGreaterThan(0);
@@ -408,25 +432,6 @@ describe("App", () => {
 
     expect(screen.getAllByText("U-001").length).toBeGreaterThan(0);
 
-    unmount();
-    window.sessionStorage.clear();
-
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "註冊" }));
-    fireEvent.change(screen.getByLabelText("使用者名稱"), {
-      target: { value: "other-user" },
-    });
-    fireEvent.change(screen.getByLabelText("密碼"), {
-      target: { value: "demo-password" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "建立帳號並登入" }));
-
-    expect(screen.getAllByText("U-001").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("回報者：camp-user").length).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText("需要飲用水與協助搬動物品").length,
-    ).toBeGreaterThan(0);
-
     fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
     fireEvent.click(screen.getByRole("button", { name: "刪除這筆上傳草稿" }));
 
@@ -435,7 +440,7 @@ describe("App", () => {
   });
 
   it("lets a signed-in reporter edit resubmit complete and delete their own upload", () => {
-    renderSignedInApp();
+    const { unmount } = renderSignedInApp();
 
     fireEvent.click(screen.getByRole("button", { name: "災民上傳頁面" }));
     fireEvent.change(screen.getByLabelText("需要協助內容"), {
@@ -469,9 +474,34 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("重新送審後的內容")).toBeInTheDocument();
     expect(screen.getAllByText("待人工確認").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("你不能審核自己上傳的資料，請由其他工作人員處理。"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "標為審核通過" })).toBeDisabled();
 
+    unmount();
+    window.sessionStorage.clear();
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "註冊" }));
+    fireEvent.change(screen.getByLabelText("使用者名稱"), {
+      target: { value: "other-user" },
+    });
+    fireEvent.change(screen.getByLabelText("密碼"), {
+      target: { value: "demo-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "建立帳號並登入" }));
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
     fireEvent.click(screen.getByRole("button", { name: "標為審核通過" }));
-    fireEvent.click(screen.getByRole("button", { name: "查詢頁面" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "登出" }));
+    fireEvent.change(screen.getByLabelText("使用者名稱"), {
+      target: { value: "camp-user" },
+    });
+    fireEvent.change(screen.getByLabelText("密碼"), {
+      target: { value: "demo-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "登入工作台" }));
 
     expect(screen.getByText("重新送審後的內容")).toBeInTheDocument();
 
@@ -528,7 +558,7 @@ describe("App", () => {
   });
 
   it("keeps rejected upload drafts out of query and records them on the rejected page", () => {
-    renderSignedInApp();
+    const { unmount } = renderSignedInApp();
 
     fireEvent.click(screen.getByRole("button", { name: "災民上傳頁面" }));
     fireEvent.change(screen.getByLabelText("需要協助內容"), {
@@ -536,6 +566,25 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "送出上傳" }));
 
+    expect(
+      screen.getByText("你不能審核自己上傳的資料，請由其他工作人員處理。"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "來源未確認" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "標為未通過" })).toBeDisabled();
+
+    unmount();
+    window.sessionStorage.clear();
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "註冊" }));
+    fireEvent.change(screen.getByLabelText("使用者名稱"), {
+      target: { value: "other-user" },
+    });
+    fireEvent.change(screen.getByLabelText("密碼"), {
+      target: { value: "demo-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "建立帳號並登入" }));
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
     fireEvent.click(screen.getByRole("button", { name: "來源未確認" }));
     fireEvent.click(screen.getByRole("button", { name: "標為未通過" }));
 
