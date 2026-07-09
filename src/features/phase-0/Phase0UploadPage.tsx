@@ -25,6 +25,7 @@ const locationClueOptions = [
 const categoryTagOptions: Phase0UploadCategoryTag[] = ["地點", "需求", "招募"];
 
 const emptyDraft: Phase0UploadDraftInput = {
+  reporterName: "",
   role: "本人",
   needSummary: "",
   locationClue: "不確定",
@@ -35,18 +36,21 @@ const emptyDraft: Phase0UploadDraftInput = {
 
 export function Phase0UploadPage({
   demandTagOptions,
+  loginSession,
   onSendToReview,
 }: {
   demandTagOptions: string[];
+  loginSession: { username: string } | null;
   onSendToReview: (draft: Phase0UploadDraftInput) => void;
 }) {
   const [draft, setDraft] = useState<Phase0UploadDraftInput>(emptyDraft);
 
-  const canSubmit =
+  const hasReportContent =
     draft.needSummary.trim().length > 0 ||
     draft.note.trim().length > 0 ||
     draft.categoryTags.length > 0 ||
     draft.demandTags.length > 0;
+  const canSubmit = Boolean(loginSession) && hasReportContent;
 
   return (
     <section className="upload-page" aria-label="災民上傳資料">
@@ -72,6 +76,7 @@ export function Phase0UploadPage({
 
             onSendToReview({
               ...draft,
+              reporterName: loginSession?.username ?? "",
               needSummary: draft.needSummary.trim(),
               note: draft.note.trim(),
             });
@@ -219,8 +224,18 @@ export function Phase0UploadPage({
 
         <aside className="upload-preview" aria-live="polite">
           <p className="eyebrow">送出前預覽</p>
-          <h3>{canSubmit ? "這筆資料送出後會出現在查詢頁" : "尚未填寫"}</h3>
+          <h3>
+            {!hasReportContent
+              ? "尚未填寫"
+              : loginSession
+                ? "這筆資料送出後會進入人工審核"
+                : "請先登入才能送出"}
+          </h3>
           <dl>
+            <div>
+              <dt>回報者帳號</dt>
+              <dd>{loginSession?.username ?? "尚未登入"}</dd>
+            </div>
             <div>
               <dt>回報者身分</dt>
               <dd>{draft.role}</dd>

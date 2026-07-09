@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RecordCard } from "../../components/RecordCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Phase0JudgementCard } from "./Phase0JudgementCard";
@@ -6,8 +6,45 @@ import { createPhase0Judgement } from "./phase0-heuristics";
 import type {
   Phase0MessyRecord,
   Phase0ReviewState,
+  Phase0UploadReviewDecision,
   Phase0UploadReviewDraft,
 } from "./phase0-types";
+
+type StaffQueueFilter =
+  "all" | "uploads" | "records" | "needsReview" | "approved" | "rejected";
+
+const staffQueueFilters: { key: StaffQueueFilter; label: string }[] = [
+  { key: "all", label: "全部" },
+  { key: "uploads", label: "災民上傳" },
+  { key: "records", label: "原始資料" },
+  { key: "needsReview", label: "待人工確認" },
+  { key: "approved", label: "審核通過" },
+  { key: "rejected", label: "未通過" },
+];
+
+function getUploadReviewDecision(
+  draft: Phase0UploadReviewDraft,
+): Phase0UploadReviewDecision {
+  if (draft.reviewDecision) {
+    return draft.reviewDecision;
+  }
+
+  return draft.humanReviewed ? "approved" : "pending";
+}
+
+function getUploadReviewLabel(draft: Phase0UploadReviewDraft) {
+  const decision = getUploadReviewDecision(draft);
+
+  if (decision === "approved") {
+    return "審核通過";
+  }
+
+  if (decision === "rejected") {
+    return "未通過";
+  }
+
+  return "待人工確認";
+}
 
 export function Phase0Workbench({
   demandTagOptions,
@@ -16,7 +53,8 @@ export function Phase0Workbench({
   selectedRecordId,
   taskBlockerTagOptions,
   uploadReviewDrafts,
-  onMarkUploadReviewDraftReviewed,
+  onApproveUploadReviewDraft,
+  onRejectUploadReviewDraft,
   onDeleteUploadReviewDraft,
   onSelect,
   onUpdateReviewState,
@@ -28,7 +66,8 @@ export function Phase0Workbench({
   selectedRecordId: string;
   taskBlockerTagOptions: string[];
   uploadReviewDrafts: Phase0UploadReviewDraft[];
-  onMarkUploadReviewDraftReviewed: (draftId: string) => void;
+  onApproveUploadReviewDraft: (draftId: string) => void;
+  onRejectUploadReviewDraft: (draftId: string) => void;
   onDeleteUploadReviewDraft: (draftId: string) => void;
   onSelect: (recordId: string) => void;
   onUpdateReviewState: (
@@ -43,6 +82,9 @@ export function Phase0Workbench({
   const [selectedUploadDraftId, setSelectedUploadDraftId] = useState<
     string | null
   >(null);
+  const [staffQueueSearchTerm, setStaffQueueSearchTerm] = useState("");
+  const [staffQueueFilter, setStaffQueueFilter] =
+    useState<StaffQueueFilter>("all");
   const selectedRecord =
     records.find((record) => record.id === selectedRecordId) ?? records[0];
   const selectedUploadDraft =
@@ -62,10 +104,81 @@ export function Phase0Workbench({
   const selectedUploadReviewState = selectedUploadDraft
     ? {
         humanReviewed: Boolean(selectedUploadDraft.humanReviewed),
+        reviewDecision: getUploadReviewDecision(selectedUploadDraft),
         demandTags: selectedUploadDraft.demandTags ?? [],
         taskBlockerTags: selectedUploadDraft.taskBlockerTags ?? [],
       }
     : null;
+  const normalizedStaffQueueSearch = staffQueueSearchTerm.trim().toLowerCase();
+  const filteredUploadReviewDrafts = useMemo(
+    () =>
+      uploadReviewDrafts.filter((draft) => {
+        const decision = getUploadReviewDecision(draft);
+        const haystack = [
+          draft.id,
+          draft.reporterName,
+          draft.role,
+          draft.needSummary,
+          draft.locationClue,
+          draft.note,
+          getUploadReviewLabel(draft),
+          decision === "approved" ? "已人工審核 人工看過" : "",
+          decision === "rejected" ? "審核沒過 退回" : "",
+          decision === "pending" ? "待人工確認 尚未查核" : "",
+          "災民上傳 上傳草稿",
+          ...(draft.categoryTags ?? []),
+          ...(draft.demandTags ?? []),
+          ...(draft.taskBlockerTags ?? []),
+        ]
+          .join(" ")
+          .toLowerCase();
+        const matchesSearch =
+          normalizedStaffQueueSearch.length === 0 ||
+          haystack.includes(normalizedStaffQueueSearch);
+        const matchesFilter =
+          staffQueueFilter === "all" ||
+          staffQueueFilter === "uploads" ||
+          (staffQueueFilter === "needsReview" && decision === "pending") ||
+          (staffQueueFilter === "approved" && decision === "approved") ||
+          (staffQueueFilter === "rejected" && decision === "rejected");
+
+        return matchesSearch && matchesFilter;
+      }),
+    [normalizedStaffQueueSearch, staffQueueFilter, uploadReviewDrafts],
+  );
+  const filteredRecords = useMemo(
+    () =>
+      records.filter((record) => {
+        const reviewState = reviewStates[record.id];
+        const haystack = [
+          record.id,
+          record.rawText,
+          record.sourceType,
+          record.verificationStatus,
+          reviewState?.humanReviewed ? "已人工審核 人工看過" : "待人工確認",
+          ...(reviewState?.demandTags ?? []),
+          ...(reviewState?.taskBlockerTags ?? []),
+          "原始資料",
+        ]
+          .join(" ")
+          .toLowerCase();
+        const matchesSearch =
+          normalizedStaffQueueSearch.length === 0 ||
+          haystack.includes(normalizedStaffQueueSearch);
+        const matchesFilter =
+          staffQueueFilter === "all" ||
+          staffQueueFilter === "records" ||
+          (staffQueueFilter === "needsReview" && !reviewState?.humanReviewed) ||
+          (staffQueueFilter === "approved" &&
+            Boolean(reviewState?.humanReviewed));
+
+        return matchesSearch && matchesFilter;
+      }),
+    [normalizedStaffQueueSearch, records, reviewStates, staffQueueFilter],
+  );
+  const filteredQueueCount =
+    filteredUploadReviewDrafts.length + filteredRecords.length;
+  const allQueueCount = uploadReviewDrafts.length + records.length;
 
   return (
     <div className="workbench">
@@ -84,7 +197,7 @@ export function Phase0Workbench({
           <h3>災民上傳資料</h3>
           <p>
             {uploadReviewDrafts.length > 0
-              ? `收到 ${uploadReviewDrafts.length} 筆上傳資料，已可在查詢頁看到。`
+              ? `收到 ${uploadReviewDrafts.length} 筆上傳資料，審核通過後才會出現在查詢頁。`
               : "目前沒有送出的上傳資料。"}
           </p>
         </div>
@@ -92,7 +205,47 @@ export function Phase0Workbench({
 
       <div className="workbench__layout">
         <aside className="workbench__queue" aria-label="選擇資料">
-          {uploadReviewDrafts.map((draft) => (
+          <div className="staff-queue-search">
+            <label className="control-field">
+              <span>工作人員分類搜尋</span>
+              <input
+                type="text"
+                placeholder="搜尋編號、來源、回報者或標籤"
+                value={staffQueueSearchTerm}
+                onChange={(event) =>
+                  setStaffQueueSearchTerm(event.target.value)
+                }
+              />
+            </label>
+
+            <div className="staff-queue-filter" aria-label="工作人員分類篩選">
+              {staffQueueFilters.map((filter) => {
+                const isSelected = staffQueueFilter === filter.key;
+
+                return (
+                  <button
+                    type="button"
+                    className={isSelected ? "active" : ""}
+                    aria-pressed={isSelected}
+                    key={filter.key}
+                    onClick={() => setStaffQueueFilter(filter.key)}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p>
+              {filteredQueueCount} / {allQueueCount} 筆符合
+            </p>
+          </div>
+
+          {filteredQueueCount === 0 ? (
+            <p className="staff-queue-empty">沒有符合條件的資料</p>
+          ) : null}
+
+          {filteredUploadReviewDrafts.map((draft) => (
             <button
               className={
                 selectedUploadDraft?.id === draft.id
@@ -109,17 +262,17 @@ export function Phase0Workbench({
               </span>
               <span
                 className={
-                  draft.humanReviewed
+                  getUploadReviewDecision(draft) === "approved"
                     ? "review-tag"
                     : "review-tag review-tag--blocker"
                 }
               >
-                {draft.humanReviewed ? "已人工審核" : "待人工確認"}
+                {getUploadReviewLabel(draft)}
               </span>
             </button>
           ))}
 
-          {records.map((record) => (
+          {filteredRecords.map((record) => (
             <button
               className={
                 !selectedUploadDraft && record.id === selectedRecord.id
@@ -155,20 +308,22 @@ export function Phase0Workbench({
                 </div>
                 <span
                   className={
-                    selectedUploadDraft.humanReviewed
+                    getUploadReviewDecision(selectedUploadDraft) === "approved"
                       ? "review-tag"
                       : "review-tag review-tag--blocker"
                   }
                 >
-                  {selectedUploadDraft.humanReviewed
-                    ? "已人工審核"
-                    : "待人工確認"}
+                  {getUploadReviewLabel(selectedUploadDraft)}
                 </span>
               </div>
               <p>{selectedUploadDraft.needSummary || "未填寫協助內容"}</p>
               <dl>
                 <div>
-                  <dt>回報者</dt>
+                  <dt>回報者帳號</dt>
+                  <dd>{selectedUploadDraft.reporterName || "未記錄"}</dd>
+                </div>
+                <div>
+                  <dt>回報者身分</dt>
                   <dd>{selectedUploadDraft.role}</dd>
                 </div>
                 <div>
@@ -296,9 +451,12 @@ export function Phase0Workbench({
                   <div className="staff-review-summary" aria-live="polite">
                     <span>
                       審核狀態：
-                      {selectedUploadReviewState.humanReviewed
-                        ? "已由人工看過"
-                        : "尚未由人工看過"}
+                      {selectedUploadReviewState.reviewDecision === "approved"
+                        ? "審核通過"
+                        : selectedUploadReviewState.reviewDecision ===
+                            "rejected"
+                          ? "未通過"
+                          : "尚未由人工看過"}
                     </span>
                     <span>
                       需求分類：
@@ -319,14 +477,30 @@ export function Phase0Workbench({
                 <button
                   type="button"
                   className="upload-review-detail__review"
-                  disabled={selectedUploadDraft.humanReviewed}
+                  disabled={
+                    getUploadReviewDecision(selectedUploadDraft) === "approved"
+                  }
                   onClick={() =>
-                    onMarkUploadReviewDraftReviewed(selectedUploadDraft.id)
+                    onApproveUploadReviewDraft(selectedUploadDraft.id)
                   }
                 >
-                  {selectedUploadDraft.humanReviewed
-                    ? "已人工審核"
-                    : "標為已人工審核"}
+                  {getUploadReviewDecision(selectedUploadDraft) === "approved"
+                    ? "已審核通過"
+                    : "標為審核通過"}
+                </button>
+                <button
+                  type="button"
+                  className="upload-review-detail__reject"
+                  disabled={
+                    getUploadReviewDecision(selectedUploadDraft) === "rejected"
+                  }
+                  onClick={() =>
+                    onRejectUploadReviewDraft(selectedUploadDraft.id)
+                  }
+                >
+                  {getUploadReviewDecision(selectedUploadDraft) === "rejected"
+                    ? "已標為未通過"
+                    : "標為未通過"}
                 </button>
                 <button
                   type="button"

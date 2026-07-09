@@ -142,16 +142,20 @@ type QueryItem =
     };
 
 export function Phase0ClassificationPanel({
+  currentUsername,
   demandTagOptions,
+  onToggleTaskAcceptance,
   records,
   reviewStates,
-  taskBlockerTagOptions,
+  taskAcceptances,
   uploadReviewDrafts,
 }: {
+  currentUsername: string;
   demandTagOptions: string[];
+  onToggleTaskAcceptance: (taskId: string) => void;
   records: Phase0MessyRecord[];
   reviewStates: Record<string, Phase0ReviewState>;
-  taskBlockerTagOptions: string[];
+  taskAcceptances: Record<string, string[]>;
   uploadReviewDrafts: Phase0UploadReviewDraft[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -161,9 +165,6 @@ export function Phase0ClassificationPanel({
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<TimeKey[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<LocationKey[]>([]);
   const [selectedDemandTags, setSelectedDemandTags] = useState<string[]>([]);
-  const [selectedTaskBlockerTags, setSelectedTaskBlockerTags] = useState<
-    string[]
-  >([]);
 
   const recordCategories = useMemo(
     () =>
@@ -234,10 +235,16 @@ export function Phase0ClassificationPanel({
     uploadReviewDrafts,
   ]);
 
+  const visibleQueryItems = useMemo(
+    () => queryItems.filter((item) => item.taskBlockerTags.length === 0),
+    [queryItems],
+  );
+  const hiddenTaskBlockedCount = queryItems.length - visibleQueryItems.length;
+
   const filteredItems = useMemo(() => {
     const normalizedQuery = searchTerm.trim().toLowerCase();
 
-    return queryItems.filter((item) => {
+    return visibleQueryItems.filter((item) => {
       const reviewLabel = item.humanReviewed ? "已人工審核 人工看過" : "";
       const haystack = [
         item.id,
@@ -246,6 +253,7 @@ export function Phase0ClassificationPanel({
         item.kind === "upload" ? "災民上傳 上傳草稿" : "原始資料",
         ...(item.kind === "upload"
           ? [
+              item.draft.reporterName,
               item.draft.role,
               item.draft.locationClue,
               item.draft.note,
@@ -274,29 +282,22 @@ export function Phase0ClassificationPanel({
       const matchesDemandTags =
         selectedDemandTags.length === 0 ||
         item.demandTags.some((tag) => selectedDemandTags.includes(tag));
-      const matchesTaskBlockerTags =
-        selectedTaskBlockerTags.length === 0 ||
-        item.taskBlockerTags.some((tag) =>
-          selectedTaskBlockerTags.includes(tag),
-        );
 
       return (
         matchesQuery &&
         matchesCategory &&
         matchesTime &&
         matchesLocation &&
-        matchesDemandTags &&
-        matchesTaskBlockerTags
+        matchesDemandTags
       );
     });
   }, [
-    queryItems,
     searchTerm,
     selectedCategories,
     selectedDemandTags,
     selectedLocations,
-    selectedTaskBlockerTags,
     selectedTimeSlots,
+    visibleQueryItems,
   ]);
 
   return (
@@ -304,12 +305,19 @@ export function Phase0ClassificationPanel({
       <div className="panel__header">
         <div>
           <h2>分類查詢</h2>
-          <p>依照需求、時間、地點與招募，把原始資訊快速縮到可確認的範圍。</p>
+          <p>
+            依照需求、時間、地點與招募，把原始資訊快速縮到可確認的範圍；接受紀錄只存在前端暫存。
+          </p>
         </div>
         <p>
-          {filteredItems.length} / {queryItems.length} 筆符合
+          {filteredItems.length} / {visibleQueryItems.length} 筆符合
         </p>
       </div>
+      {hiddenTaskBlockedCount > 0 ? (
+        <p className="query-safety-note">
+          已隱藏 {hiddenTaskBlockedCount} 筆不能直接變成任務的資料。
+        </p>
+      ) : null}
 
       <div className="classification-controls">
         <label className="control-field">
@@ -436,38 +444,15 @@ export function Phase0ClassificationPanel({
         </div>
       </div>
 
-      <div className="filter-group" aria-label="不能直接變成任務原因篩選">
-        <div className="filter-group__title">不能直接變成任務</div>
-        <div className="filter-pills">
-          {taskBlockerTagOptions.map((tag) => {
-            const isSelected = selectedTaskBlockerTags.includes(tag);
-
-            return (
-              <button
-                key={tag}
-                type="button"
-                className={isSelected ? "active" : ""}
-                aria-pressed={isSelected}
-                onClick={() =>
-                  setSelectedTaskBlockerTags((current) =>
-                    current.includes(tag)
-                      ? current.filter((item) => item !== tag)
-                      : [...current, tag],
-                  )
-                }
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {filteredItems.length === 0 ? (
         <EmptyState message="沒有符合條件的資料" />
       ) : (
         <div className="grid">
           {filteredItems.map((item) => {
+            const acceptedUsers = taskAcceptances[item.id] ?? [];
+            const isAcceptedByCurrentUser =
+              acceptedUsers.includes(currentUsername);
+
             return (
               <article
                 className={
@@ -503,6 +488,7 @@ export function Phase0ClassificationPanel({
                   ) : (
                     <>
                       <span className="source-label">災民上傳</span>
+                      <span>回報者：{item.draft.reporterName || "未記錄"}</span>
                       <span>地點線索：{item.draft.locationClue}</span>
                       {item.draft.note ? (
                         <span>備註：{item.draft.note}</span>
@@ -541,6 +527,33 @@ export function Phase0ClassificationPanel({
                       {category}
                     </span>
                   ))}
+                </div>
+                <div
+                  className="task-acceptance"
+                  aria-label={`${item.id} 接受任務`}
+                >
+                  <div>
+                    <span className="task-acceptance__count">
+                      目前 {acceptedUsers.length} 人接受
+                    </span>
+                    <span className="task-acceptance__note">
+                      前端暫存紀錄，不代表正式派工。
+                    </span>
+                    <span className="task-acceptance__users">
+                      接受者：
+                      {acceptedUsers.length > 0
+                        ? acceptedUsers.join("、")
+                        : "尚無"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={isAcceptedByCurrentUser ? "active" : ""}
+                    aria-pressed={isAcceptedByCurrentUser}
+                    onClick={() => onToggleTaskAcceptance(item.id)}
+                  >
+                    {isAcceptedByCurrentUser ? "取消接受" : "接受任務"}
+                  </button>
                 </div>
               </article>
             );
