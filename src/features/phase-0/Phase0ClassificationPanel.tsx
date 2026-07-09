@@ -3,7 +3,11 @@ import { EmptyState } from "../../components/EmptyState";
 import { SourceLabel } from "../../components/SourceLabel";
 import { StatusBadge } from "../../components/StatusBadge";
 import { formatDateTime } from "../../lib/date";
-import type { Phase0MessyRecord, Phase0ReviewState } from "./phase0-types";
+import type {
+  Phase0MessyRecord,
+  Phase0ReviewState,
+  Phase0UploadReviewDraft,
+} from "./phase0-types";
 
 const categoryLabels = ["需求", "時間", "地點", "招募"] as const;
 type CategoryKey = (typeof categoryLabels)[number];
@@ -79,8 +83,8 @@ const categoryKeywords: Record<CategoryKey, string[]> = {
   ],
 };
 
-function inferCategories(record: Phase0MessyRecord): CategoryKey[] {
-  const text = record.rawText.toLowerCase();
+function inferCategoriesFromText(value: string): CategoryKey[] {
+  const text = value.toLowerCase();
 
   return categoryLabels.filter((category) =>
     categoryKeywords[category].some((keyword) =>
@@ -89,28 +93,64 @@ function inferCategories(record: Phase0MessyRecord): CategoryKey[] {
   );
 }
 
-function inferTimeSlots(record: Phase0MessyRecord): TimeKey[] {
-  const text = record.rawText;
+function inferCategories(record: Phase0MessyRecord): CategoryKey[] {
+  return inferCategoriesFromText(record.rawText);
+}
 
+function inferTimeSlotsFromText(text: string): TimeKey[] {
   return timeOptions.filter((slot) => text.includes(slot));
 }
 
-function inferLocations(record: Phase0MessyRecord): LocationKey[] {
-  const text = record.rawText;
+function inferTimeSlots(record: Phase0MessyRecord): TimeKey[] {
+  return inferTimeSlotsFromText(record.rawText);
+}
 
+function inferLocationsFromText(text: string): LocationKey[] {
   return locationOptions.filter((location) => text.includes(location));
 }
+
+function inferLocations(record: Phase0MessyRecord): LocationKey[] {
+  return inferLocationsFromText(record.rawText);
+}
+
+type QueryItem =
+  | {
+      kind: "record";
+      id: string;
+      text: string;
+      categories: CategoryKey[];
+      timeSlots: TimeKey[];
+      locations: LocationKey[];
+      demandTags: string[];
+      taskBlockerTags: string[];
+      humanReviewed: boolean;
+      record: Phase0MessyRecord;
+    }
+  | {
+      kind: "upload";
+      id: string;
+      text: string;
+      categories: CategoryKey[];
+      timeSlots: TimeKey[];
+      locations: LocationKey[];
+      demandTags: string[];
+      taskBlockerTags: string[];
+      humanReviewed: boolean;
+      draft: Phase0UploadReviewDraft;
+    };
 
 export function Phase0ClassificationPanel({
   demandTagOptions,
   records,
   reviewStates,
   taskBlockerTagOptions,
+  uploadReviewDrafts,
 }: {
   demandTagOptions: string[];
   records: Phase0MessyRecord[];
   reviewStates: Record<string, Phase0ReviewState>;
   taskBlockerTagOptions: string[];
+  uploadReviewDrafts: Phase0UploadReviewDraft[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>(
@@ -137,25 +177,76 @@ export function Phase0ClassificationPanel({
     [records],
   );
 
-  const filteredRecords = useMemo(() => {
+  const queryItems = useMemo<QueryItem[]>(() => {
+    const recordItems: QueryItem[] = records.map((record) => {
+      const reviewState = reviewStates[record.id];
+
+      return {
+        kind: "record",
+        id: record.id,
+        text: record.rawText,
+        categories: recordCategories.get(record.id) ?? [],
+        timeSlots: recordTimeSlots.get(record.id) ?? [],
+        locations: recordLocations.get(record.id) ?? [],
+        demandTags: reviewState?.demandTags ?? [],
+        taskBlockerTags: reviewState?.taskBlockerTags ?? [],
+        humanReviewed: Boolean(reviewState?.humanReviewed),
+        record,
+      };
+    });
+    const uploadItems: QueryItem[] = uploadReviewDrafts
+      .filter((draft) => draft.humanReviewed)
+      .map((draft) => {
+        const textForInference = [
+          draft.needSummary,
+          draft.locationClue,
+          ...(draft.demandTags ?? []),
+          ...(draft.taskBlockerTags ?? []),
+        ].join(" ");
+
+        return {
+          kind: "upload",
+          id: draft.id,
+          text: draft.needSummary,
+          categories: inferCategoriesFromText(textForInference),
+          timeSlots: inferTimeSlotsFromText(textForInference),
+          locations: inferLocationsFromText(textForInference),
+          demandTags: draft.demandTags ?? [],
+          taskBlockerTags: draft.taskBlockerTags ?? [],
+          humanReviewed: Boolean(draft.humanReviewed),
+          draft,
+        };
+      });
+
+    return [...recordItems, ...uploadItems];
+  }, [
+    recordCategories,
+    recordLocations,
+    recordTimeSlots,
+    records,
+    reviewStates,
+    uploadReviewDrafts,
+  ]);
+
+  const filteredItems = useMemo(() => {
     const normalizedQuery = searchTerm.trim().toLowerCase();
 
-    return records.filter((record) => {
-      const categories = recordCategories.get(record.id) ?? [];
-      const timeSlots = recordTimeSlots.get(record.id) ?? [];
-      const locations = recordLocations.get(record.id) ?? [];
-      const reviewState = reviewStates[record.id];
-      const demandTags = reviewState?.demandTags ?? [];
-      const taskBlockerTags = reviewState?.taskBlockerTags ?? [];
-      const reviewLabel = reviewState?.humanReviewed
-        ? "已人工審核 人工看過"
-        : "";
+    return queryItems.filter((item) => {
+      const reviewLabel = item.humanReviewed ? "已人工審核 人工看過" : "";
       const haystack = [
-        record.id,
-        record.rawText,
+        item.id,
+        item.text,
         reviewLabel,
-        ...demandTags,
-        ...taskBlockerTags,
+        item.kind === "upload" ? "災民上傳 上傳草稿" : "原始資料",
+        ...(item.kind === "upload"
+          ? [
+              item.draft.role,
+              item.draft.locationClue,
+              ...item.draft.uploadedFileNames,
+            ]
+          : []),
+        ...item.demandTags,
+        ...item.taskBlockerTags,
       ]
         .join(" ")
         .toLowerCase();
@@ -164,19 +255,23 @@ export function Phase0ClassificationPanel({
         normalizedQuery.length === 0 || haystack.includes(normalizedQuery);
       const matchesCategory =
         selectedCategories.length === 0 ||
-        categories.some((category) => selectedCategories.includes(category));
+        item.categories.some((category) =>
+          selectedCategories.includes(category),
+        );
       const matchesTime =
         selectedTimeSlots.length === 0 ||
-        timeSlots.some((slot) => selectedTimeSlots.includes(slot));
+        item.timeSlots.some((slot) => selectedTimeSlots.includes(slot));
       const matchesLocation =
         selectedLocations.length === 0 ||
-        locations.some((location) => selectedLocations.includes(location));
+        item.locations.some((location) => selectedLocations.includes(location));
       const matchesDemandTags =
         selectedDemandTags.length === 0 ||
-        demandTags.some((tag) => selectedDemandTags.includes(tag));
+        item.demandTags.some((tag) => selectedDemandTags.includes(tag));
       const matchesTaskBlockerTags =
         selectedTaskBlockerTags.length === 0 ||
-        taskBlockerTags.some((tag) => selectedTaskBlockerTags.includes(tag));
+        item.taskBlockerTags.some((tag) =>
+          selectedTaskBlockerTags.includes(tag),
+        );
 
       return (
         matchesQuery &&
@@ -188,11 +283,7 @@ export function Phase0ClassificationPanel({
       );
     });
   }, [
-    recordCategories,
-    recordLocations,
-    recordTimeSlots,
-    records,
-    reviewStates,
+    queryItems,
     searchTerm,
     selectedCategories,
     selectedDemandTags,
@@ -209,7 +300,7 @@ export function Phase0ClassificationPanel({
           <p>依照需求、時間、地點與招募，把原始資訊快速縮到可確認的範圍。</p>
         </div>
         <p>
-          {filteredRecords.length} / {records.length} 筆符合
+          {filteredItems.length} / {queryItems.length} 筆符合
         </p>
       </div>
 
@@ -365,43 +456,58 @@ export function Phase0ClassificationPanel({
         </div>
       </div>
 
-      {filteredRecords.length === 0 ? (
+      {filteredItems.length === 0 ? (
         <EmptyState message="沒有符合條件的資料" />
       ) : (
         <div className="grid">
-          {filteredRecords.map((record) => {
-            const categories = recordCategories.get(record.id) ?? [];
-            const reviewState = reviewStates[record.id];
-            const demandTags = reviewState?.demandTags ?? [];
-            const taskBlockerTags = reviewState?.taskBlockerTags ?? [];
-
+          {filteredItems.map((item) => {
             return (
-              <article className="record-card" key={record.id}>
+              <article
+                className={
+                  item.kind === "upload"
+                    ? "record-card record-card--upload"
+                    : "record-card"
+                }
+                key={item.id}
+              >
                 <div className="record-card__header">
-                  <h3>{record.id}</h3>
-                  <StatusBadge status={record.verificationStatus} />
+                  <h3>{item.id}</h3>
+                  {item.kind === "record" ? (
+                    <StatusBadge status={item.record.verificationStatus} />
+                  ) : (
+                    <span className="review-tag">已人工審核</span>
+                  )}
                 </div>
-                <p>{record.rawText}</p>
+                <p>{item.text || "未填寫協助內容"}</p>
                 <div className="record-card__meta">
-                  <SourceLabel sourceType={record.sourceType} />
-                  <span>更新：{formatDateTime(record.updatedAt)}</span>
+                  {item.kind === "record" ? (
+                    <>
+                      <SourceLabel sourceType={item.record.sourceType} />
+                      <span>更新：{formatDateTime(item.record.updatedAt)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="source-label">災民上傳</span>
+                      <span>地點線索：{item.draft.locationClue}</span>
+                    </>
+                  )}
                 </div>
-                {reviewState?.humanReviewed ||
-                demandTags.length > 0 ||
-                taskBlockerTags.length > 0 ? (
+                {item.humanReviewed ||
+                item.demandTags.length > 0 ||
+                item.taskBlockerTags.length > 0 ? (
                   <div
                     className="review-tags"
-                    aria-label={`${record.id} 人工標示`}
+                    aria-label={`${item.id} 人工標示`}
                   >
-                    {reviewState?.humanReviewed ? (
+                    {item.kind === "record" && item.humanReviewed ? (
                       <span className="review-tag">已人工審核</span>
                     ) : null}
-                    {demandTags.map((tag) => (
+                    {item.demandTags.map((tag) => (
                       <span className="review-tag review-tag--demand" key={tag}>
                         {tag}
                       </span>
                     ))}
-                    {taskBlockerTags.map((tag) => (
+                    {item.taskBlockerTags.map((tag) => (
                       <span
                         className="review-tag review-tag--blocker"
                         key={tag}
@@ -412,7 +518,7 @@ export function Phase0ClassificationPanel({
                   </div>
                 ) : null}
                 <div className="record-tags">
-                  {categories.map((category) => (
+                  {item.categories.map((category) => (
                     <span className="category-chip" key={category}>
                       {category}
                     </span>

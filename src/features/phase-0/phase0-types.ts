@@ -42,6 +42,9 @@ export type Phase0UploadDraftInput = {
 
 export type Phase0UploadReviewDraft = Phase0UploadDraftInput & {
   id: string;
+  humanReviewed?: boolean;
+  demandTags?: string[];
+  taskBlockerTags?: string[];
 };
 
 export type Phase0JudgementDraft = {

@@ -1,6 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app/App";
+
+afterEach(() => {
+  window.sessionStorage.clear();
+});
 
 describe("App", () => {
   it("renders the main processing entry title", () => {
@@ -151,6 +155,8 @@ describe("App", () => {
         files: [new File(["mock"], "mock-note.txt", { type: "text/plain" })],
       },
     });
+    expect(screen.getByText("已選擇檔案")).toBeInTheDocument();
+    expect(screen.getAllByText("mock-note.txt").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "建立待審核草稿" }));
 
     expect(screen.getByText("已建立一筆待人工確認草稿")).toBeInTheDocument();
@@ -159,21 +165,82 @@ describe("App", () => {
       screen.getAllByText("需要飲用水與協助搬動物品").length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText("活動中心附近").length).toBeGreaterThan(0);
-    expect(screen.getByText("mock-note.txt")).toBeInTheDocument();
+    expect(screen.getAllByText("mock-note.txt").length).toBeGreaterThan(0);
     expect(screen.getByText("不能直接變成任務")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "送交人工查核" }));
+
     expect(
-      screen.getByRole("button", { name: "已送交人工查核" }),
-    ).toBeDisabled();
-
-    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
-
+      screen.getByText("這裡提供工作人員修改、整理與補充判斷的空間。"),
+    ).toBeInTheDocument();
     expect(screen.getByText("災民上傳待查核")).toBeInTheDocument();
-    expect(screen.getByText("U-001")).toBeInTheDocument();
+    expect(screen.getByText("收到 1 筆待人工確認草稿。")).toBeInTheDocument();
+    expect(screen.getAllByText("U-001").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("需要飲用水與協助搬動物品").length,
     ).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "需求分類：需要物資" }));
+    fireEvent.click(screen.getByRole("button", { name: "來源未確認" }));
+    fireEvent.click(screen.getByRole("button", { name: "標為已人工審核" }));
+
+    expect(screen.getAllByText("已人工審核").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "已人工審核" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "查詢頁面" }));
+
+    expect(screen.getAllByText("U-001").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("需要飲用水與協助搬動物品").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("災民上傳").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("需要物資").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("來源未確認").length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByPlaceholderText("搜尋關鍵字、地點或需求"), {
+      target: { value: "需要物資" },
+    });
+
+    expect(screen.getAllByText("U-001").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
+    fireEvent.click(screen.getByRole("button", { name: "刪除這筆上傳草稿" }));
+
+    expect(screen.queryByText("U-001")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("目前沒有送交人工查核的上傳草稿。"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps upload review drafts after a page refresh in this session", () => {
+    window.sessionStorage.setItem(
+      "phase0-upload-review-drafts",
+      JSON.stringify([
+        {
+          id: "U-777",
+          role: "本人",
+          needSummary: "需要協助確認狀況",
+          locationClue: "位置仍不清楚",
+          uploadedFileNames: ["mock-refresh.txt"],
+          humanReviewed: true,
+          demandTags: ["需要物資"],
+          taskBlockerTags: ["地點不清楚"],
+        },
+      ]),
+    );
+
+    render(<App />);
+
+    expect(screen.getAllByText("U-777").length).toBeGreaterThan(0);
+    expect(screen.getByText("需要協助確認狀況")).toBeInTheDocument();
+    expect(screen.getAllByText("需要物資").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("地點不清楚").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
+
+    expect(screen.getAllByText("U-777").length).toBeGreaterThan(0);
+    expect(screen.getByText("需要協助確認狀況")).toBeInTheDocument();
+    expect(screen.getByText("mock-refresh.txt")).toBeInTheDocument();
   });
 
   it("keeps draft CRUD as learner work instead of starter output", () => {
@@ -182,9 +249,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "工作人員頁面" }));
 
     expect(screen.getByText("尚未建立整理草稿")).toBeInTheDocument();
-    expect(
-      screen.getByText(/請 agent 加上建立、編輯、刪除或重設整理草稿/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/這張卡只保留保守的安全邊界/)).toBeInTheDocument();
     expect(
       screen.queryByText(/已產生 \d+ 筆安全邊界草稿/),
     ).not.toBeInTheDocument();

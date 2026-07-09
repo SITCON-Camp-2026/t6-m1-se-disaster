@@ -67,6 +67,7 @@ export function Phase0UploadPage({
               needSummary: draft.needSummary.trim(),
               locationClue: draft.locationClue.trim(),
             });
+            setSentToReview(false);
           }}
         >
           <label className="control-field">
@@ -164,6 +165,16 @@ export function Phase0UploadPage({
               }
             />
             <small>Phase 0 請勿放入真實照片、電話、完整地址或個資。</small>
+            {draft.uploadedFileNames.length > 0 ? (
+              <div className="selected-file-list" aria-live="polite">
+                <span>已選擇檔案</span>
+                <ul>
+                  {draft.uploadedFileNames.map((fileName) => (
+                    <li key={fileName}>{fileName}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </label>
 
           <div className="upload-form__actions">

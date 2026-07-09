@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import messyReports from "../fixtures/phase-0/messy-reports.json";
 import { EmptyState } from "../components/EmptyState";
 import { Phase0ClassificationPanel } from "../features/phase-0/Phase0ClassificationPanel";
@@ -22,6 +22,37 @@ const taskBlockerTagOptions = [
   "非當事人轉述",
   "可能有安全風險",
 ];
+const uploadReviewDraftStorageKey = "phase0-upload-review-drafts";
+
+function loadUploadReviewDrafts(): Phase0UploadReviewDraft[] {
+  try {
+    const storedValue = window.sessionStorage.getItem(
+      uploadReviewDraftStorageKey,
+    );
+
+    if (!storedValue) {
+      return [];
+    }
+
+    const parsedValue: unknown = JSON.parse(storedValue);
+
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+
+    return parsedValue.filter(
+      (item): item is Phase0UploadReviewDraft =>
+        typeof item === "object" &&
+        item !== null &&
+        "id" in item &&
+        "needSummary" in item &&
+        "locationClue" in item &&
+        "uploadedFileNames" in item,
+    );
+  } catch {
+    return [];
+  }
+}
 
 export function App() {
   const [page, setPage] = useState<PageKey>("query");
@@ -33,7 +64,14 @@ export function App() {
   >({});
   const [uploadReviewDrafts, setUploadReviewDrafts] = useState<
     Phase0UploadReviewDraft[]
-  >([]);
+  >(loadUploadReviewDrafts);
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      uploadReviewDraftStorageKey,
+      JSON.stringify(uploadReviewDrafts),
+    );
+  }, [uploadReviewDrafts]);
 
   function updateReviewState(
     recordId: string,
@@ -58,8 +96,35 @@ export function App() {
       {
         ...draft,
         id: `U-${String(current.length + 1).padStart(3, "0")}`,
+        humanReviewed: false,
+        demandTags: [],
+        taskBlockerTags: [],
       },
     ]);
+    setPage("staff");
+  }
+
+  function updateUploadReviewDraft(
+    draftId: string,
+    updater: (current: Phase0UploadReviewDraft) => Phase0UploadReviewDraft,
+  ) {
+    setUploadReviewDrafts((current) =>
+      current.map((draft) => (draft.id === draftId ? updater(draft) : draft)),
+    );
+  }
+
+  function markUploadReviewDraftReviewed(draftId: string) {
+    setUploadReviewDrafts((current) =>
+      current.map((draft) =>
+        draft.id === draftId ? { ...draft, humanReviewed: true } : draft,
+      ),
+    );
+  }
+
+  function deleteUploadReviewDraft(draftId: string) {
+    setUploadReviewDrafts((current) =>
+      current.filter((draft) => draft.id !== draftId),
+    );
   }
 
   return (
@@ -106,6 +171,7 @@ export function App() {
             records={phase0Records}
             reviewStates={reviewStates}
             taskBlockerTagOptions={taskBlockerTagOptions}
+            uploadReviewDrafts={uploadReviewDrafts}
           />
         ) : page === "upload" ? (
           <Phase0UploadPage onSendToReview={sendUploadDraftToReview} />
@@ -118,8 +184,11 @@ export function App() {
               selectedRecordId={selectedRecordId}
               taskBlockerTagOptions={taskBlockerTagOptions}
               uploadReviewDrafts={uploadReviewDrafts}
+              onMarkUploadReviewDraftReviewed={markUploadReviewDraftReviewed}
+              onDeleteUploadReviewDraft={deleteUploadReviewDraft}
               onSelect={setSelectedRecordId}
               onUpdateReviewState={updateReviewState}
+              onUpdateUploadReviewDraft={updateUploadReviewDraft}
             />
           </div>
         )}

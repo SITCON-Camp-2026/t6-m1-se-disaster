@@ -340,6 +340,11 @@ textarea:focus-visible {
   box-shadow: 0 10px 22px rgb(16 24 40 / 5%);
 }
 
+.record-card--upload {
+  border-color: #efc77c;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf0 100%);
+}
+
 .record-card--selected {
   border-color: var(--accent);
   box-shadow:
@@ -462,6 +467,27 @@ textarea:focus-visible {
 
 .upload-dropzone small {
   color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.selected-file-list {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #c9ddf2;
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.selected-file-list span {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.selected-file-list ul {
+  margin: 0;
+  padding-left: 18px;
   line-height: 1.5;
 }
 
@@ -601,10 +627,7 @@ textarea:focus-visible {
 
 .workbench__layout {
   display: grid;
-  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr) minmax(
-      220px,
-      260px
-    );
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -622,12 +645,19 @@ textarea:focus-visible {
   display: grid;
   align-content: start;
   gap: 8px;
+  max-height: 72vh;
+  overflow: auto;
 }
 
 .workbench__queue button {
   display: grid;
   gap: 6px;
+  min-width: 0;
   text-align: left;
+}
+
+.workbench__queue button span {
+  overflow-wrap: anywhere;
 }
 
 .workbench__queue button.active {
@@ -636,9 +666,40 @@ textarea:focus-visible {
   color: var(--accent-strong);
 }
 
+.workbench__queue button.workbench__queue-upload {
+  border-color: #efc77c;
+  background: #fffaf0;
+}
+
+.workbench__queue button.workbench__queue-upload.active {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: #6f3f00;
+}
+
 .workbench__main {
   display: grid;
   gap: 16px;
+}
+
+.upload-review-inbox {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--warning);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface);
+  box-shadow: 0 10px 22px rgb(16 24 40 / 5%);
+}
+
+.upload-review-inbox h3 {
+  margin: 0 0 8px;
+}
+
+.upload-review-inbox p {
+  margin-bottom: 0;
+  color: #344054;
 }
 
 .staff-review-panel {
@@ -726,6 +787,98 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+.staff-mini-badge--fixture {
+  border-color: #c9ddf2;
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.staff-mini-badge--upload {
+  border-color: #efc77c;
+  background: #fff5df;
+  color: #945a00;
+}
+
+.upload-review-detail {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid #efc77c;
+  border-left: 5px solid var(--warning);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fffaf0;
+  box-shadow: 0 10px 22px rgb(16 24 40 / 5%);
+}
+
+.upload-review-detail h3,
+.upload-review-detail p {
+  margin: 0;
+}
+
+.upload-review-detail p {
+  color: #344054;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.upload-review-detail dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.upload-review-detail dl div {
+  border: 1px solid #efc77c;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.upload-review-detail dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.upload-review-detail dd {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.upload-review-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.upload-review-detail__actions button {
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.upload-review-detail__review {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.upload-review-detail__review:disabled {
+  border-color: #b8d7cf;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  cursor: not-allowed;
+}
+
+.upload-review-detail__delete {
+  border: 1px solid #f5b5ad;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .judgement-card__header {
   display: flex;
   align-items: flex-start;
@@ -749,6 +902,10 @@ textarea:focus-visible {
 .upload-review-list {
   display: grid;
   gap: 10px;
+}
+
+.upload-review-list--inline {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .upload-review-item {
@@ -937,6 +1094,10 @@ textarea:focus-visible {
   }
 
   .staff-review-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-review-detail dl {
     grid-template-columns: 1fr;
   }
 }
